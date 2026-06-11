@@ -1,73 +1,49 @@
-# React + TypeScript + Vite
+# Proyecto: Aprendizaje del Lenguaje de Señas
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+## Descripción
+Este proyecto consiste en una plataforma web educativa para el aprendizaje del lenguaje de señas mediante lecciones interactivas, imágenes y ejercicios prácticos.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+# Metodología SCRUM
 
-## React Compiler
+## Roles
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Product Owner
+Selene Suarez
 
-## Expanding the ESLint configuration
+### Scrum Master
+Selene Suarez
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### Equipo de Desarrollo
+Selene Suarez
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+---
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+# Product Backlog
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+| ID | Historia de Usuario | Prioridad |
+|----|---------------------|------------|
+| HU1 | Como usuario quiero registrarme para guardar mi progreso. | Alta |
+| HU2 | Como usuario quiero aprender el abecedario en lenguaje de señas. | Alta |
+| HU3 | Como usuario quiero visualizar videos educativos. | Media |
+| HU4 | Como administrador quiero agregar nuevas lecciones. | Alta |
+| HU5 | Como usuario quiero realizar ejercicios interactivos. | Media |
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+---
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+# Sprint 1
+- Configuración del proyecto React
+- Creación del repositorio GitHub
+- Diseño inicial de la interfaz
+- Página principal del sistema
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+---
+
+# Tecnologías Utilizadas
+
+- React
+- TypeScript
+- Vite
+- GitHub
+- Visual Studio Code

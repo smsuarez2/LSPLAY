@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Icon } from '@iconify/react';
 
 const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 
@@ -32,11 +33,11 @@ const signDescriptions: Record<string, string> = {
 };
 
 const handEmojis: Record<string, string> = {
-  A:'✊',B:'🖐',C:'🤏',D:'☝️',E:'✊',F:'🤌',
-  G:'👈',H:'✌️',I:'🤙',J:'🤙',K:'🖖',L:'🤟',
-  M:'✊',N:'✊',O:'👌',P:'🖖',Q:'👇',R:'🤞',
-  S:'✊',T:'✊',U:'✌️',V:'✌️',W:'🖖',X:'☝️',
-  Y:'🤙',Z:'☝️',
+  A:'fluent-emoji-flat:raised-fist',B:'fluent-emoji-flat:raised-hand',C:'fluent-emoji-flat:pinching-hand',D:'fluent-emoji-flat:index-pointing-up',E:'fluent-emoji-flat:raised-fist',F:'fluent-emoji-flat:pinched-fingers',
+  G:'fluent-emoji-flat:backhand-index-pointing-left',H:'fluent-emoji-flat:victory-hand',I:'fluent-emoji-flat:call-me-hand',J:'fluent-emoji-flat:call-me-hand',K:'fluent-emoji-flat:vulcan-salute',L:'fluent-emoji-flat:love-you-gesture',
+  M:'fluent-emoji-flat:raised-fist',N:'fluent-emoji-flat:raised-fist',O:'fluent-emoji-flat:ok-hand',P:'fluent-emoji-flat:vulcan-salute',Q:'fluent-emoji-flat:backhand-index-pointing-down',R:'fluent-emoji-flat:crossed-fingers',
+  S:'fluent-emoji-flat:raised-fist',T:'fluent-emoji-flat:raised-fist',U:'fluent-emoji-flat:victory-hand',V:'fluent-emoji-flat:victory-hand',W:'fluent-emoji-flat:vulcan-salute',X:'fluent-emoji-flat:index-pointing-up',
+  Y:'fluent-emoji-flat:call-me-hand',Z:'fluent-emoji-flat:index-pointing-up',
 };
 
 export default function Aprender() {
@@ -44,7 +45,7 @@ export default function Aprender() {
   const [learned, setLearned] = useState<Set<string>>(new Set());
   const [filter, setFilter] = useState('todas');
 
-  const groups = { 'todas': alphabet, 'A–F': alphabet.slice(0,6), 'G–L': alphabet.slice(6,12), 'M–R': alphabet.slice(12,18), 'S–Z': alphabet.slice(18) };
+  const groups = { 'todas': alphabet, 'A-F': alphabet.slice(0,6), 'G-L': alphabet.slice(6,12), 'M-R': alphabet.slice(12,18), 'S-Z': alphabet.slice(18) };
   const visible = groups[filter as keyof typeof groups];
 
   function markLearned(letter: string) {
@@ -53,7 +54,7 @@ export default function Aprender() {
 
   return (
     <div style={{ minHeight: '100vh', background: '#faf7ff', padding: '40px 32px' }}>
-      <h1 style={s.title}>📖 Módulos de Aprendizaje</h1>
+      <h1 style={s.title}>Módulos de Aprendizaje</h1>
       <p style={s.sub}>Aprende cada seña del abecedario</p>
 
       {/* Filtros */}
@@ -82,10 +83,12 @@ export default function Aprender() {
             <div key={letter}
               onClick={() => setSelected(letter)}
               style={{ ...s.signBox, ...(isLearned ? s.signBoxLearned : {}), ...(selected === letter ? s.signBoxSelected : {}) }}>
-              <span style={{ fontSize: 36, display: 'block', marginBottom: 6 }}>{handEmojis[letter]}</span>
-              <span style={{ fontFamily: "'Fredoka One',cursive", fontSize: 32, color: isLearned ? '#267a50' : '#7c3aed' }}>{letter}</span>
-              {isLearned && <span style={s.checkBadge}>✓ Aprendida</span>}
-              {!isLearned && <span style={s.viewBadge}>Ver seña</span>}
+              <Icon icon={handEmojis[letter]} width={36} style={{ display: 'block', margin: '0 auto 6px' }} />
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                <span style={{ fontFamily: "'Fredoka One',cursive", fontSize: 32, color: isLearned ? '#267a50' : '#7c3aed' }}>{letter}</span>
+                {isLearned && <span style={s.checkBadge}>Aprendida</span>}
+                {!isLearned && <span style={s.viewBadge}>Ver</span>}
+              </div>
             </div>
           );
         })}
@@ -96,17 +99,17 @@ export default function Aprender() {
         <div style={s.modalOverlay} onClick={() => setSelected(null)}>
           <div style={s.modal} onClick={e => e.stopPropagation()}>
             <button style={s.closeBtn} onClick={() => setSelected(null)}>✕</button>
-            <span style={{ fontSize: 80, display: 'block', marginBottom: 12, textAlign: 'center' }}>{handEmojis[selected]}</span>
+            <Icon icon={handEmojis[selected]} width={80} style={{ display: 'block', margin: '0 auto 12px' }} />
             <h2 style={{ fontFamily: "'Fredoka One',cursive", fontSize: 52, color: '#7c3aed', textAlign: 'center', marginBottom: 8 }}>{selected}</h2>
             <p style={{ fontSize: 16, fontWeight: 600, color: '#6b5a9e', textAlign: 'center', lineHeight: 1.6, marginBottom: 24 }}>
               {signDescriptions[selected]}
             </p>
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
               <button style={s.btnLearn} onClick={() => { markLearned(selected); setSelected(null); }}>
-                ✅ ¡Ya la aprendí!
+                <><Icon icon="fluent-emoji-flat:check-mark-button" width={20} style={{verticalAlign:'middle',marginRight:6}} />¡Ya la aprendí!</>
               </button>
               <button style={s.btnPractice} onClick={() => setSelected(null)}>
-                📷 Practicar con cámara
+                <><Icon icon="fluent-emoji-flat:camera" width={20} style={{verticalAlign:'middle',marginRight:6}} />Practicar con cámara</>
               </button>
             </div>
           </div>
