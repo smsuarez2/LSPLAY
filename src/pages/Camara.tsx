@@ -1,13 +1,36 @@
 import { useRef, useState, useEffect } from 'react';
 
+// 27 letras del abecedario español. 'j' y 'z' llevan movimiento (type: 'motion'),
+// el resto son posturas estáticas (type: 'static').
 const SIGNS = [
-  { id: 'gracias',   label: 'Gracias',   emoji: '🙏' },
-  { id: 'escucha',   label: 'Escucha',   emoji: '👂' },
-  { id: 'explicar',  label: 'Explicar',  emoji: '🗣️' },
-  { id: 'invitar',   label: 'Invitar',   emoji: '🤝' },
-  { id: 'diferente', label: 'Diferente', emoji: '🔄' },
-  { id: 'nunca',     label: 'Nunca',     emoji: '🚫' },
-];
+  { id: 'a',     label: 'A', type: 'static' },
+  { id: 'b',     label: 'B', type: 'static' },
+  { id: 'c',     label: 'C', type: 'static' },
+  { id: 'd',     label: 'D', type: 'static' },
+  { id: 'e',     label: 'E', type: 'static' },
+  { id: 'f',     label: 'F', type: 'static' },
+  { id: 'g',     label: 'G', type: 'static' },
+  { id: 'h',     label: 'H', type: 'static' },
+  { id: 'i',     label: 'I', type: 'static' },
+  { id: 'j',     label: 'J', type: 'motion' },
+  { id: 'k',     label: 'K', type: 'static' },
+  { id: 'l',     label: 'L', type: 'static' },
+  { id: 'm',     label: 'M', type: 'static' },
+  { id: 'n',     label: 'N', type: 'static' },
+  { id: 'enye',  label: 'Ñ', type: 'static' },
+  { id: 'o',     label: 'O', type: 'static' },
+  { id: 'p',     label: 'P', type: 'static' },
+  { id: 'q',     label: 'Q', type: 'static' },
+  { id: 'r',     label: 'R', type: 'static' },
+  { id: 's',     label: 'S', type: 'static' },
+  { id: 't',     label: 'T', type: 'static' },
+  { id: 'u',     label: 'U', type: 'static' },
+  { id: 'v',     label: 'V', type: 'static' },
+  { id: 'w',     label: 'W', type: 'static' },
+  { id: 'x',     label: 'X', type: 'static' },
+  { id: 'y',     label: 'Y', type: 'static' },
+  { id: 'z',     label: 'Z', type: 'motion' },
+] as const;
 
 const API = 'https://lsplay-python-backend-production.up.railway.app';
 const FRAME_INTERVAL_MS = 150; // ~6-7 fps enviados a Python
@@ -35,6 +58,18 @@ export default function Camara() {
   const [serverOnline, setServerOnline] = useState(true);
 
   const sign = SIGNS[current];
+  const targetCount = sign.type === 'motion' ? 6 : 12; // menos muestras para letras con movimiento
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => { setImgError(false); }, [current]);
+
+  function countFor(letterId: string) {
+    return trainCount[letterId] || 0;
+  }
+  function isCompleted(letterId: string, type: string) {
+    const target = type === 'motion' ? 6 : 12;
+    return countFor(letterId) >= target;
+  }
 
   // Verificar servidor Python al cargar
   useEffect(() => {
@@ -42,13 +77,11 @@ export default function Camara() {
       .catch(() => setServerOnline(false));
   }, []);
 
-  // Activar webcam del navegador y empezar a enviar frames a Python
   async function startCamera() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
       streamRef.current = stream;
       if (videoRef.current) videoRef.current.srcObject = stream;
-
       setActive(true);
       startFrameLoop();
     } catch (err) {
@@ -76,7 +109,6 @@ export default function Camara() {
     frameLoopRef.current = null;
   }
 
-  // Captura el frame actual del <video> y lo manda a Python
   async function sendFrame() {
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -113,7 +145,11 @@ export default function Camara() {
 
   async function startTrainingMode() {
     await fetch(`${API}/api/train/start/${sign.id}`, { method: 'POST' });
-    setStatus(`🎯 Entrenando "${sign.label}" — haz el movimiento completo de la seña`);
+    setStatus(
+      sign.type === 'motion'
+        ? `🎯 Entrenando "${sign.label}" — haz el movimiento completo de la letra`
+        : `🎯 Entrenando "${sign.label}" — mantén la postura de la mano unos segundos`
+    );
   }
 
   async function changeSign(i: number) {
@@ -124,8 +160,6 @@ export default function Camara() {
     }
   }
 
-  // Ya no llama a /api/detect (no existe): usa la última detección
-  // que llegó junto con la respuesta de /api/frame.
   function checkSign() {
     setChecked(true);
     if (detected && detected.label === sign.id && detected.conf >= 55) {
@@ -161,24 +195,24 @@ export default function Camara() {
   useEffect(() => () => { stopCamera(); }, []);
 
   const totalSamples = Object.values(trainCount).reduce((a, b) => a + b, 0);
+  const imgExt = sign.type === 'motion' ? 'gif' : 'png';
 
   return (
     <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg,#1e1b4b,#312e81)', padding: '32px 24px' }}>
-      <h1 style={s.title}>📷 Cámara con Inteligencia Artificial</h1>
-      <p style={s.sub}>Detección de movimientos con Python + MediaPipe</p>
+      <h1 style={s.title}>🔤 Abecedario con Inteligencia Artificial</h1>
+      <p style={s.sub}>Detección del alfabeto dactilológico con Python + MediaPipe</p>
 
-      {/* Canvas oculto usado solo para capturar frames del video y mandarlos a Python */}
       <canvas ref={canvasRef} style={{ display: 'none' }} />
 
       {!serverOnline && (
         <div style={s.serverError}>
-          ⚠️ <strong>Servidor Python no disponible.</strong> Verifica que esté corriendo en <code>http://localhost:5000</code>
+          ⚠️ <strong>Servidor Python no disponible.</strong> Verifica que esté corriendo en Railway.
         </div>
       )}
 
       <div style={s.modeTabs}>
         <button style={{ ...s.modeTab, ...(mode === 'train' ? s.modeActive : {}) }} onClick={() => changeMode('train')}>
-          🎯 Entrenar señas
+          🎯 Entrenar letras
         </button>
         <button style={{ ...s.modeTab, ...(mode === 'practice' ? s.modeActive : {}) }} onClick={() => changeMode('practice')}>
           🏋️ Practicar
@@ -191,9 +225,10 @@ export default function Camara() {
             <div style={{ fontSize: 40, marginBottom: 10 }}>🐍</div>
             <h2 style={{ fontFamily: "'Fredoka One',cursive", fontSize: 22, color: '#c4b5fd', marginBottom: 8 }}>¿Cómo funciona?</h2>
             <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', lineHeight: 1.8 }}>
-              Python con MediaPipe detecta tu mano en <strong>movimiento real</strong>, capturando una secuencia de 15 frames por seña.<br /><br />
-              <strong style={{ color: '#c4b5fd' }}>Paso 1 — Entrenar:</strong> Haz el movimiento completo varias veces.<br />
-              <strong style={{ color: '#86efac' }}>Paso 2 — Practicar:</strong> La IA detecta tu movimiento en tiempo real.
+              Python con MediaPipe detecta la postura de tu mano para cada letra del abecedario.<br /><br />
+              <strong style={{ color: '#c4b5fd' }}>Paso 1 — Entrenar:</strong> Haz la postura de cada letra frente a la cámara, en orden de la A a la Z.<br />
+              <strong style={{ color: '#86efac' }}>Paso 2 — Practicar:</strong> La IA detecta qué letra estás formando en tiempo real.<br /><br />
+              <em>Nota: la J y la Z llevan un pequeño movimiento, el resto son posturas fijas.</em>
             </p>
           </div>
           <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -208,7 +243,7 @@ export default function Camara() {
         <div style={{ maxWidth: 900, margin: '0 auto' }}>
           <div style={s.statsRow}>
             {mode === 'train' && <>
-              <span style={s.pill}>📊 {totalSamples} secuencias guardadas</span>
+              <span style={s.pill}>📊 {totalSamples} muestras guardadas</span>
               <span style={s.pill}>✅ {trainedSigns.length} / {SIGNS.length} entrenadas</span>
               <button style={s.clearBtn} onClick={clearSamples}>🗑️ Borrar todo</button>
             </>}
@@ -221,11 +256,11 @@ export default function Camara() {
           <div style={s.signTabs}>
             {SIGNS.map((sg, i) => (
               <button key={sg.id} onClick={() => changeSign(i)}
-                style={{ ...s.signTab, ...(current === i ? s.signTabActive : {}),
+                style={{ ...s.letterTab, ...(current === i ? s.signTabActive : {}),
                   ...(trainedSigns.includes(sg.id) ? { borderColor: '#86efac' } : {}) }}>
-                {sg.emoji} {sg.label}
+                {sg.label}
                 {(trainCount[sg.id] || 0) > 0 && (
-                  <span style={{ fontSize: 10, background: '#86efac', color: '#14532d', borderRadius: 10, padding: '1px 5px', marginLeft: 4 }}>
+                  <span style={{ fontSize: 9, background: '#86efac', color: '#14532d', borderRadius: 10, padding: '1px 4px', marginLeft: 3 }}>
                     {trainCount[sg.id]}
                   </span>
                 )}
@@ -233,19 +268,57 @@ export default function Camara() {
             ))}
           </div>
 
+          <div style={s.checklistBox}>
+            <div style={{ color: 'rgba(255,255,255,0.7)', fontWeight: 800, fontSize: 12, marginBottom: 10, textAlign: 'center' }}>
+              📋 Progreso del abecedario ({trainedSigns.filter(id => isCompleted(id, SIGNS.find(sg => sg.id === id)?.type || 'static')).length} / {SIGNS.length} completadas)
+            </div>
+            <div style={s.checklistGrid}>
+              {SIGNS.map(sg => {
+                const done = isCompleted(sg.id, sg.type);
+                const started = countFor(sg.id) > 0 && !done;
+                return (
+                  <div key={sg.id} style={{
+                    ...s.checkItem,
+                    background: done ? 'rgba(134,239,172,0.18)' : started ? 'rgba(252,211,77,0.15)' : 'rgba(255,255,255,0.05)',
+                    borderColor: done ? '#86efac' : started ? '#fcd34d' : 'rgba(255,255,255,0.12)',
+                  }}>
+                    <span style={{ fontWeight: 800, fontSize: 13, color: done ? '#86efac' : started ? '#fcd34d' : 'rgba(255,255,255,0.6)' }}>
+                      {done ? '✅' : started ? '🟡' : '⬜'} {sg.label}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
           <div style={s.mainPanel}>
             <div style={s.col}>
-              <div style={s.colLabel}>{mode === 'train' ? 'Seña a entrenar:' : 'Seña a imitar:'}</div>
+              <div style={s.colLabel}>{mode === 'train' ? 'Letra a entrenar:' : 'Letra a imitar:'}</div>
               <div style={s.gifBox}>
-                <img src={`/signs/${sign.id}.gif`} alt={sign.label} style={s.gifImg} />
+                {imgError ? (
+                  <div style={s.letterFallback}>
+                    <span style={{ fontFamily: "'Fredoka One',cursive", fontSize: 96, color: '#c4b5fd' }}>{sign.label}</span>
+                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 8 }}>
+                      (foto pendiente de subir)
+                    </span>
+                  </div>
+                ) : (
+                  <img
+                    src={`/signs/${sign.id}.${imgExt}`}
+                    alt={sign.label}
+                    style={s.gifImg}
+                    onError={() => setImgError(true)}
+                  />
+                )}
               </div>
               <div style={s.signNameBox}>
-                <span style={s.signName}>{sign.emoji} {sign.label}</span>
+                <span style={s.signName}>Letra {sign.label}</span>
               </div>
               {mode === 'train' && (
                 <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, textAlign: 'center', marginTop: 10, lineHeight: 1.6 }}>
-                  Haz el <strong>movimiento completo</strong> de la seña frente a la cámara,<br />
-                  repítelo <strong>5-8 veces</strong> para que el sistema aprenda bien.
+                  {sign.type === 'motion'
+                    ? <>Haz el <strong>movimiento completo</strong> de la letra frente a la cámara, repítelo varias veces.</>
+                    : <>Mantén la <strong>postura de la mano</strong> frente a la cámara unos segundos, moviéndola ligeramente de ángulo.</>}
                 </p>
               )}
               <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 10 }}>
@@ -272,7 +345,7 @@ export default function Camara() {
                 {mode === 'practice' && active && detected && result === 'none' && (
                   <div style={s.aiBadge}>
                     <span style={{ fontSize: 13, fontWeight: 800 }}>
-                      IA: {SIGNS.find(sg => sg.id === detected.label)?.emoji} {SIGNS.find(sg => sg.id === detected.label)?.label}
+                      IA: {SIGNS.find(sg => sg.id === detected.label)?.label}
                     </span>
                     <span style={{ fontSize: 11, opacity: 0.85, marginLeft: 6 }}>({detected.conf}%)</span>
                   </div>
@@ -295,7 +368,7 @@ export default function Camara() {
                 {mode === 'practice' && active && result === 'none' && (
                   <button style={{ ...s.btnCam, background: '#86efac', color: '#14532d', boxShadow: '0 4px 0 #16a34a', opacity: checked ? 0.5 : 1 }}
                     onClick={checkSign} disabled={checked}>
-                    🔍 Verificar seña
+                    🔍 Verificar letra
                   </button>
                 )}
               </div>
@@ -303,7 +376,7 @@ export default function Camara() {
               {mode === 'practice' && result !== 'none' && (
                 <button style={{ ...s.btnCam, background: '#fcd34d', color: '#78350f', boxShadow: '0 4px 0 #d97706', display: 'block', margin: '10px auto 0' }}
                   onClick={nextSign}>
-                  Siguiente seña →
+                  Siguiente letra →
                 </button>
               )}
 
@@ -315,18 +388,12 @@ export default function Camara() {
 
               {mode === 'train' && (
                 <div style={{ marginTop: 12 }}>
-                  <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, marginBottom: 6, fontWeight: 700 }}>Progreso de entrenamiento:</div>
-                  {SIGNS.map(sg => (
-                    <div key={sg.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
-                      <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>{sg.emoji} {sg.label}</span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <div style={{ width: 80, height: 6, background: 'rgba(255,255,255,0.1)', borderRadius: 10, overflow: 'hidden' }}>
-                          <div style={{ height: '100%', width: `${Math.min(100, ((trainCount[sg.id] || 0) / 8) * 100)}%`, background: '#c4b5fd', borderRadius: 10 }} />
-                        </div>
-                        <span style={{ fontSize: 11, color: '#c4b5fd', fontWeight: 700 }}>{trainCount[sg.id] || 0}/8</span>
-                      </div>
-                    </div>
-                  ))}
+                  <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, marginBottom: 6, fontWeight: 700 }}>
+                    Progreso de "{sign.label}": {trainCount[sign.id] || 0}/{targetCount}
+                  </div>
+                  <div style={{ width: '100%', height: 8, background: 'rgba(255,255,255,0.1)', borderRadius: 10, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', width: `${Math.min(100, ((trainCount[sign.id] || 0) / targetCount) * 100)}%`, background: '#c4b5fd', borderRadius: 10 }} />
+                  </div>
                 </div>
               )}
             </div>
@@ -335,7 +402,7 @@ export default function Camara() {
       )}
 
       <div style={s.tip}>
-        💡 Asegúrate de tener corriendo: <code>npm run dev</code> (frontend) y <code>py -3.11 server.py</code> (Python) al mismo tiempo.
+        💡 Recorre el abecedario en orden (A → Z) para entrenar cada letra de forma completa.
       </div>
     </div>
   );
@@ -351,9 +418,13 @@ const s: Record<string, React.CSSProperties> = {
   statsRow:      { display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 16, alignItems: 'center' },
   pill:          { background: 'rgba(196,181,253,0.2)', color: '#c4b5fd', fontWeight: 800, fontSize: 13, padding: '5px 14px', borderRadius: 20 },
   clearBtn:      { background: 'rgba(252,165,165,0.15)', color: '#fca5a5', fontWeight: 800, fontSize: 12, padding: '5px 12px', borderRadius: 20, border: '1px solid rgba(252,165,165,0.3)', cursor: 'pointer' },
-  signTabs:      { display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 20 },
-  signTab:       { fontFamily: "'Fredoka One',cursive", fontSize: 13, padding: '6px 14px', borderRadius: 20, border: '2px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.07)', color: '#fff', cursor: 'pointer' },
+  signTabs:      { display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 20, maxWidth: 800, marginLeft: 'auto', marginRight: 'auto' },
+  letterTab:     { fontFamily: "'Fredoka One',cursive", fontSize: 13, padding: '6px 10px', minWidth: 34, borderRadius: 10, border: '2px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.07)', color: '#fff', cursor: 'pointer' },
   signTabActive: { background: '#c4b5fd', color: '#4c1d95', borderColor: '#c4b5fd' },
+  letterFallback: { width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(196,181,253,0.08)' },
+  checklistBox:  { maxWidth: 900, margin: '0 auto 20px', background: 'rgba(255,255,255,0.05)', borderRadius: 16, padding: '16px', border: '1.5px solid rgba(255,255,255,0.1)' },
+  checklistGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(60px, 1fr))', gap: 6 },
+  checkItem:     { borderRadius: 10, border: '1.5px solid', padding: '6px 4px', textAlign: 'center' },
   mainPanel:     { display: 'flex', gap: 20, flexWrap: 'wrap', justifyContent: 'center' },
   col:           { flex: 1, minWidth: 280, maxWidth: 400 },
   colLabel:      { color: 'rgba(255,255,255,0.7)', fontWeight: 800, fontSize: 12, marginBottom: 8, textAlign: 'center' },
