@@ -51,6 +51,14 @@ export default function Camara() {
   useEffect(() => {
     fetch(`${API}/`).then(r => r.ok ? setServerOnline(true) : setServerOnline(false))
       .catch(() => setServerOnline(false));
+
+    fetch(`${API}/api/status`)
+      .then(r => r.json())
+      .then(data => {
+        setTrainCount(data.train_count || {});
+        setTrainedSigns(data.trained_signs || []);
+      })
+      .catch(() => {});
   }, []);
 
   function countFor(letterId: string) {
@@ -169,6 +177,15 @@ export default function Camara() {
   }
 
   useEffect(() => {
+    if (mode === 'practice' && result === 'correct') {
+      const timer = setTimeout(() => {
+        nextSign();
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [result, mode]);
+
+  useEffect(() => {
     if (mode === 'train' && active) startTrainingMode();
   }, [mode, active]);
 
@@ -227,26 +244,27 @@ export default function Camara() {
               <span style={s.pill}>✅ {trainedSigns.length} / {SIGNS.length} entrenadas</span>
               <button style={s.clearBtn} onClick={clearSamples}>🗑️ Borrar todo</button>
             </>}
-            {mode === 'practice' && <>
-              <span style={s.pill}>⭐ {score} / {SIGNS.length} correctas</span>
-              {trainedSigns.length === 0 && <span style={{ ...s.pill, background: 'rgba(252,165,165,0.2)', color: '#fca5a5' }}>⚠️ Primero entrena</span>}
-            </>}
+            {mode === 'practice' && (
+              <span style={s.pill}>⭐ {score} correctas en esta sesión</span>
+            )}
           </div>
 
-          <div style={s.signTabs}>
-            {SIGNS.map((sg, i) => (
-              <button key={sg.id} onClick={() => changeSign(i)}
-                style={{ ...s.letterTab, ...(current === i ? s.signTabActive : {}),
-                  ...(trainedSigns.includes(sg.id) ? { borderColor: '#86efac' } : {}) }}>
-                {sg.label}
-                {(trainCount[sg.id] || 0) > 0 && (
-                  <span style={{ fontSize: 9, background: '#86efac', color: '#14532d', borderRadius: 10, padding: '1px 4px', marginLeft: 3 }}>
-                    {trainCount[sg.id]}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
+          {mode === 'train' && (
+            <div style={s.signTabs}>
+              {SIGNS.map((sg, i) => (
+                <button key={sg.id} onClick={() => changeSign(i)}
+                  style={{ ...s.letterTab, ...(current === i ? s.signTabActive : {}),
+                    ...(trainedSigns.includes(sg.id) ? { borderColor: '#86efac' } : {}) }}>
+                  {sg.label}
+                  {(trainCount[sg.id] || 0) > 0 && (
+                    <span style={{ fontSize: 9, background: '#86efac', color: '#14532d', borderRadius: 10, padding: '1px 4px', marginLeft: 3 }}>
+                      {trainCount[sg.id]}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
 
           {mode === 'train' && (
             <div style={s.checklistBox}>
@@ -274,26 +292,15 @@ export default function Camara() {
           )}
 
           {mode === 'practice' && (
-            <div style={s.checklistBox}>
-              <div style={{ color: 'rgba(255,255,255,0.7)', fontWeight: 800, fontSize: 12, marginBottom: 10, textAlign: 'center' }}>
-                🏆 Tu progreso ({completedLetters.size} / {SIGNS.length} letras logradas)
+            <div style={s.progressBarBox}>
+              <div style={s.progressBarLabel}>
+                🏆 Progreso: {completedLetters.size} / {SIGNS.length} letras
               </div>
-              <div style={s.checklistGrid}>
-                {SIGNS.map(sg => {
-                  const done = completedLetters.has(sg.id);
-                  const isCurrent = sg.id === sign.id;
-                  return (
-                    <div key={sg.id} style={{
-                      ...s.checkItem,
-                      background: done ? 'rgba(134,239,172,0.18)' : isCurrent ? 'rgba(196,181,253,0.25)' : 'rgba(255,255,255,0.05)',
-                      borderColor: done ? '#86efac' : isCurrent ? '#c4b5fd' : 'rgba(255,255,255,0.12)',
-                    }}>
-                      <span style={{ fontWeight: 800, fontSize: 13, color: done ? '#86efac' : isCurrent ? '#c4b5fd' : 'rgba(255,255,255,0.5)' }}>
-                        {done ? '✅' : sg.label}
-                      </span>
-                    </div>
-                  );
-                })}
+              <div style={s.progressBarTrack}>
+                <div style={{
+                  ...s.progressBarFill,
+                  width: `${(completedLetters.size / SIGNS.length) * 100}%`,
+                }} />
               </div>
             </div>
           )}
@@ -333,10 +340,12 @@ export default function Camara() {
                   Mantén la <strong>postura de la mano</strong> frente a la cámara unos segundos, moviéndola ligeramente de ángulo.
                 </p>
               )}
-              <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 10 }}>
-                <button style={s.navBtn} onClick={() => changeSign((current - 1 + SIGNS.length) % SIGNS.length)}>← Anterior</button>
-                <button style={s.navBtn} onClick={() => changeSign((current + 1) % SIGNS.length)}>Siguiente →</button>
-              </div>
+              {mode === 'train' && (
+                <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 10 }}>
+                  <button style={s.navBtn} onClick={() => changeSign((current - 1 + SIGNS.length) % SIGNS.length)}>← Anterior</button>
+                  <button style={s.navBtn} onClick={() => changeSign((current + 1) % SIGNS.length)}>Siguiente →</button>
+                </div>
+              )}
             </div>
 
             <div style={s.col}>
@@ -435,6 +444,10 @@ const s: Record<string, React.CSSProperties> = {
   signTabActive: { background: '#c4b5fd', color: '#4c1d95', borderColor: '#c4b5fd' },
   letterHintBox: { width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, rgba(124,58,237,0.15), rgba(196,181,253,0.08))' },
   letterFallback: { width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(196,181,253,0.08)' },
+  progressBarBox:   { maxWidth: 500, margin: '0 auto 20px', textAlign: 'center' },
+  progressBarLabel: { color: '#fff', fontFamily: "'Fredoka One',cursive", fontSize: 16, marginBottom: 8 },
+  progressBarTrack: { width: '100%', height: 22, background: 'rgba(255,255,255,0.12)', borderRadius: 20, overflow: 'hidden', border: '2px solid rgba(255,255,255,0.15)' },
+  progressBarFill:  { height: '100%', background: 'linear-gradient(90deg, #86efac, #4ade80)', borderRadius: 20, transition: 'width 0.4s ease' },
   checklistBox:  { maxWidth: 900, margin: '0 auto 20px', background: 'rgba(255,255,255,0.05)', borderRadius: 16, padding: '16px', border: '1.5px solid rgba(255,255,255,0.1)' },
   checklistGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(60px, 1fr))', gap: 6 },
   checkItem:     { borderRadius: 10, border: '1.5px solid', padding: '6px 4px', textAlign: 'center' },
