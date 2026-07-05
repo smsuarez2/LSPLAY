@@ -41,6 +41,7 @@ export default function Camara() {
   const [status, setStatus]   = useState('');
   const [serverOnline, setServerOnline] = useState(true);
   const [imgError, setImgError] = useState(false);
+  const [completedLetters, setCompletedLetters] = useState<Set<string>>(new Set());
 
   const isAdmin = new URLSearchParams(window.location.search).get('admin') === 'true';
   const sign = SIGNS[current];
@@ -143,6 +144,7 @@ export default function Camara() {
     if (detected && detected.label === sign.id && detected.conf >= 55) {
       setResult('correct');
       setScore(s => s + 1);
+      setCompletedLetters(prev => new Set(prev).add(sign.id));
     } else {
       setResult('incorrect');
     }
@@ -246,34 +248,68 @@ export default function Camara() {
             ))}
           </div>
 
-          <div style={s.checklistBox}>
-            <div style={{ color: 'rgba(255,255,255,0.7)', fontWeight: 800, fontSize: 12, marginBottom: 10, textAlign: 'center' }}>
-              📋 Progreso del abecedario ({trainedSigns.filter(id => isCompleted(id)).length} / {SIGNS.length} completadas)
+          {mode === 'train' && (
+            <div style={s.checklistBox}>
+              <div style={{ color: 'rgba(255,255,255,0.7)', fontWeight: 800, fontSize: 12, marginBottom: 10, textAlign: 'center' }}>
+                📋 Progreso del abecedario ({trainedSigns.filter(id => isCompleted(id)).length} / {SIGNS.length} completadas)
+              </div>
+              <div style={s.checklistGrid}>
+                {SIGNS.map(sg => {
+                  const done = isCompleted(sg.id);
+                  const started = countFor(sg.id) > 0 && !done;
+                  return (
+                    <div key={sg.id} style={{
+                      ...s.checkItem,
+                      background: done ? 'rgba(134,239,172,0.18)' : started ? 'rgba(252,211,77,0.15)' : 'rgba(255,255,255,0.05)',
+                      borderColor: done ? '#86efac' : started ? '#fcd34d' : 'rgba(255,255,255,0.12)',
+                    }}>
+                      <span style={{ fontWeight: 800, fontSize: 13, color: done ? '#86efac' : started ? '#fcd34d' : 'rgba(255,255,255,0.6)' }}>
+                        {done ? '✅' : started ? '🟡' : '⬜'} {sg.label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-            <div style={s.checklistGrid}>
-              {SIGNS.map(sg => {
-                const done = isCompleted(sg.id);
-                const started = countFor(sg.id) > 0 && !done;
-                return (
-                  <div key={sg.id} style={{
-                    ...s.checkItem,
-                    background: done ? 'rgba(134,239,172,0.18)' : started ? 'rgba(252,211,77,0.15)' : 'rgba(255,255,255,0.05)',
-                    borderColor: done ? '#86efac' : started ? '#fcd34d' : 'rgba(255,255,255,0.12)',
-                  }}>
-                    <span style={{ fontWeight: 800, fontSize: 13, color: done ? '#86efac' : started ? '#fcd34d' : 'rgba(255,255,255,0.6)' }}>
-                      {done ? '✅' : started ? '🟡' : '⬜'} {sg.label}
-                    </span>
-                  </div>
-                );
-              })}
+          )}
+
+          {mode === 'practice' && (
+            <div style={s.checklistBox}>
+              <div style={{ color: 'rgba(255,255,255,0.7)', fontWeight: 800, fontSize: 12, marginBottom: 10, textAlign: 'center' }}>
+                🏆 Tu progreso ({completedLetters.size} / {SIGNS.length} letras logradas)
+              </div>
+              <div style={s.checklistGrid}>
+                {SIGNS.map(sg => {
+                  const done = completedLetters.has(sg.id);
+                  const isCurrent = sg.id === sign.id;
+                  return (
+                    <div key={sg.id} style={{
+                      ...s.checkItem,
+                      background: done ? 'rgba(134,239,172,0.18)' : isCurrent ? 'rgba(196,181,253,0.25)' : 'rgba(255,255,255,0.05)',
+                      borderColor: done ? '#86efac' : isCurrent ? '#c4b5fd' : 'rgba(255,255,255,0.12)',
+                    }}>
+                      <span style={{ fontWeight: 800, fontSize: 13, color: done ? '#86efac' : isCurrent ? '#c4b5fd' : 'rgba(255,255,255,0.5)' }}>
+                        {done ? '✅' : sg.label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
 
           <div style={s.mainPanel}>
             <div style={s.col}>
-              <div style={s.colLabel}>{mode === 'train' ? 'Letra a entrenar:' : 'Letra a imitar:'}</div>
+              <div style={s.colLabel}>{mode === 'train' ? 'Letra a entrenar:' : 'Adivina la letra:'}</div>
               <div style={s.gifBox}>
-                {imgError ? (
+                {mode === 'practice' && result !== 'correct' ? (
+                  <div style={s.letterHintBox}>
+                    <span style={{ fontFamily: "'Fredoka One',cursive", fontSize: 130, color: '#c4b5fd' }}>{sign.label}</span>
+                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 12, textAlign: 'center', padding: '0 16px' }}>
+                      Forma esta letra con tu mano frente a la cámara
+                    </span>
+                  </div>
+                ) : imgError ? (
                   <div style={s.letterFallback}>
                     <span style={{ fontFamily: "'Fredoka One',cursive", fontSize: 96, color: '#c4b5fd' }}>{sign.label}</span>
                     <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 8 }}>
@@ -397,6 +433,7 @@ const s: Record<string, React.CSSProperties> = {
   signTabs:      { display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 20, maxWidth: 800, marginLeft: 'auto', marginRight: 'auto' },
   letterTab:     { fontFamily: "'Fredoka One',cursive", fontSize: 13, padding: '6px 10px', minWidth: 34, borderRadius: 10, border: '2px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.07)', color: '#fff', cursor: 'pointer' },
   signTabActive: { background: '#c4b5fd', color: '#4c1d95', borderColor: '#c4b5fd' },
+  letterHintBox: { width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, rgba(124,58,237,0.15), rgba(196,181,253,0.08))' },
   letterFallback: { width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(196,181,253,0.08)' },
   checklistBox:  { maxWidth: 900, margin: '0 auto 20px', background: 'rgba(255,255,255,0.05)', borderRadius: 16, padding: '16px', border: '1.5px solid rgba(255,255,255,0.1)' },
   checklistGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(60px, 1fr))', gap: 6 },
