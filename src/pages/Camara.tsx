@@ -1,39 +1,23 @@
 import { useRef, useState, useEffect } from 'react';
 
-// 27 letras del abecedario español. 'j' y 'z' llevan movimiento (type: 'motion'),
-// el resto son posturas estáticas (type: 'static').
+// 26 letras del abecedario (A-Z). Todas son posturas estáticas.
+// J y Z incluyen una flecha dibujada en la propia imagen como referencia visual del movimiento real,
+// pero la cámara las detecta igual que cualquier otra letra (postura fija).
 const SIGNS = [
-  { id: 'a',     label: 'A', type: 'static' },
-  { id: 'b',     label: 'B', type: 'static' },
-  { id: 'c',     label: 'C', type: 'static' },
-  { id: 'd',     label: 'D', type: 'static' },
-  { id: 'e',     label: 'E', type: 'static' },
-  { id: 'f',     label: 'F', type: 'static' },
-  { id: 'g',     label: 'G', type: 'static' },
-  { id: 'h',     label: 'H', type: 'static' },
-  { id: 'i',     label: 'I', type: 'static' },
-  { id: 'j',     label: 'J', type: 'motion' },
-  { id: 'k',     label: 'K', type: 'static' },
-  { id: 'l',     label: 'L', type: 'static' },
-  { id: 'm',     label: 'M', type: 'static' },
-  { id: 'n',     label: 'N', type: 'static' },
-  { id: 'enye',  label: 'Ñ', type: 'static' },
-  { id: 'o',     label: 'O', type: 'static' },
-  { id: 'p',     label: 'P', type: 'static' },
-  { id: 'q',     label: 'Q', type: 'static' },
-  { id: 'r',     label: 'R', type: 'static' },
-  { id: 's',     label: 'S', type: 'static' },
-  { id: 't',     label: 'T', type: 'static' },
-  { id: 'u',     label: 'U', type: 'static' },
-  { id: 'v',     label: 'V', type: 'static' },
-  { id: 'w',     label: 'W', type: 'static' },
-  { id: 'x',     label: 'X', type: 'static' },
-  { id: 'y',     label: 'Y', type: 'static' },
-  { id: 'z',     label: 'Z', type: 'motion' },
+  { id: 'a', label: 'A' }, { id: 'b', label: 'B' }, { id: 'c', label: 'C' },
+  { id: 'd', label: 'D' }, { id: 'e', label: 'E' }, { id: 'f', label: 'F' },
+  { id: 'g', label: 'G' }, { id: 'h', label: 'H' }, { id: 'i', label: 'I' },
+  { id: 'j', label: 'J' }, { id: 'k', label: 'K' }, { id: 'l', label: 'L' },
+  { id: 'm', label: 'M' }, { id: 'n', label: 'N' }, { id: 'o', label: 'O' },
+  { id: 'p', label: 'P' }, { id: 'q', label: 'Q' }, { id: 'r', label: 'R' },
+  { id: 's', label: 'S' }, { id: 't', label: 'T' }, { id: 'u', label: 'U' },
+  { id: 'v', label: 'V' }, { id: 'w', label: 'W' }, { id: 'x', label: 'X' },
+  { id: 'y', label: 'Y' }, { id: 'z', label: 'Z' },
 ] as const;
 
 const API = 'https://lsplay-python-backend-production.up.railway.app';
-const FRAME_INTERVAL_MS = 150; // ~6-7 fps enviados a Python
+const FRAME_INTERVAL_MS = 150;
+const TARGET_SAMPLES = 12;
 
 type Mode = 'menu' | 'train' | 'practice';
 type SignResult = 'none' | 'correct' | 'incorrect';
@@ -56,26 +40,24 @@ export default function Camara() {
   const [trainedSigns, setTrainedSigns] = useState<string[]>([]);
   const [status, setStatus]   = useState('');
   const [serverOnline, setServerOnline] = useState(true);
-
-  const sign = SIGNS[current];
-  const targetCount = sign.type === 'motion' ? 6 : 12; // menos muestras para letras con movimiento
   const [imgError, setImgError] = useState(false);
+
+  const isAdmin = new URLSearchParams(window.location.search).get('admin') === 'true';
+  const sign = SIGNS[current];
 
   useEffect(() => { setImgError(false); }, [current]);
 
-  function countFor(letterId: string) {
-    return trainCount[letterId] || 0;
-  }
-  function isCompleted(letterId: string, type: string) {
-    const target = type === 'motion' ? 6 : 12;
-    return countFor(letterId) >= target;
-  }
-
-  // Verificar servidor Python al cargar
   useEffect(() => {
     fetch(`${API}/`).then(r => r.ok ? setServerOnline(true) : setServerOnline(false))
       .catch(() => setServerOnline(false));
   }, []);
+
+  function countFor(letterId: string) {
+    return trainCount[letterId] || 0;
+  }
+  function isCompleted(letterId: string) {
+    return countFor(letterId) >= TARGET_SAMPLES;
+  }
 
   async function startCamera() {
     try {
@@ -145,11 +127,7 @@ export default function Camara() {
 
   async function startTrainingMode() {
     await fetch(`${API}/api/train/start/${sign.id}`, { method: 'POST' });
-    setStatus(
-      sign.type === 'motion'
-        ? `🎯 Entrenando "${sign.label}" — haz el movimiento completo de la letra`
-        : `🎯 Entrenando "${sign.label}" — mantén la postura de la mano unos segundos`
-    );
+    setStatus(`🎯 Entrenando "${sign.label}" — mantén la postura de la mano unos segundos`);
   }
 
   async function changeSign(i: number) {
@@ -195,7 +173,6 @@ export default function Camara() {
   useEffect(() => () => { stopCamera(); }, []);
 
   const totalSamples = Object.values(trainCount).reduce((a, b) => a + b, 0);
-  const imgExt = sign.type === 'motion' ? 'gif' : 'png';
 
   return (
     <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg,#1e1b4b,#312e81)', padding: '32px 24px' }}>
@@ -211,9 +188,11 @@ export default function Camara() {
       )}
 
       <div style={s.modeTabs}>
-        <button style={{ ...s.modeTab, ...(mode === 'train' ? s.modeActive : {}) }} onClick={() => changeMode('train')}>
-          🎯 Entrenar letras
-        </button>
+        {isAdmin && (
+          <button style={{ ...s.modeTab, ...(mode === 'train' ? s.modeActive : {}) }} onClick={() => changeMode('train')}>
+            🎯 Entrenar letras
+          </button>
+        )}
         <button style={{ ...s.modeTab, ...(mode === 'practice' ? s.modeActive : {}) }} onClick={() => changeMode('practice')}>
           🏋️ Practicar
         </button>
@@ -226,13 +205,12 @@ export default function Camara() {
             <h2 style={{ fontFamily: "'Fredoka One',cursive", fontSize: 22, color: '#c4b5fd', marginBottom: 8 }}>¿Cómo funciona?</h2>
             <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', lineHeight: 1.8 }}>
               Python con MediaPipe detecta la postura de tu mano para cada letra del abecedario.<br /><br />
-              <strong style={{ color: '#c4b5fd' }}>Paso 1 — Entrenar:</strong> Haz la postura de cada letra frente a la cámara, en orden de la A a la Z.<br />
-              <strong style={{ color: '#86efac' }}>Paso 2 — Practicar:</strong> La IA detecta qué letra estás formando en tiempo real.<br /><br />
-              <em>Nota: la J y la Z llevan un pequeño movimiento, el resto son posturas fijas.</em>
+              <strong style={{ color: '#c4b5fd' }}>Paso 1 — Entrenar:</strong> Haz la postura de cada letra frente a la cámara.<br />
+              <strong style={{ color: '#86efac' }}>Paso 2 — Practicar:</strong> La IA detecta qué letra estás formando en tiempo real.
             </p>
           </div>
           <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <button style={s.btnMain} onClick={() => changeMode('train')}>🎯 Ir a Entrenar</button>
+            {isAdmin && <button style={s.btnMain} onClick={() => changeMode('train')}>🎯 Ir a Entrenar</button>}
             <button style={{ ...s.btnMain, background: '#86efac', color: '#14532d', boxShadow: '0 4px 0 #16a34a' }}
               onClick={() => changeMode('practice')}>🏋️ Ir a Practicar</button>
           </div>
@@ -270,11 +248,11 @@ export default function Camara() {
 
           <div style={s.checklistBox}>
             <div style={{ color: 'rgba(255,255,255,0.7)', fontWeight: 800, fontSize: 12, marginBottom: 10, textAlign: 'center' }}>
-              📋 Progreso del abecedario ({trainedSigns.filter(id => isCompleted(id, SIGNS.find(sg => sg.id === id)?.type || 'static')).length} / {SIGNS.length} completadas)
+              📋 Progreso del abecedario ({trainedSigns.filter(id => isCompleted(id)).length} / {SIGNS.length} completadas)
             </div>
             <div style={s.checklistGrid}>
               {SIGNS.map(sg => {
-                const done = isCompleted(sg.id, sg.type);
+                const done = isCompleted(sg.id);
                 const started = countFor(sg.id) > 0 && !done;
                 return (
                   <div key={sg.id} style={{
@@ -299,12 +277,12 @@ export default function Camara() {
                   <div style={s.letterFallback}>
                     <span style={{ fontFamily: "'Fredoka One',cursive", fontSize: 96, color: '#c4b5fd' }}>{sign.label}</span>
                     <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 8 }}>
-                      (foto pendiente de subir)
+                      (imagen pendiente de subir)
                     </span>
                   </div>
                 ) : (
                   <img
-                    src={`/signs/${sign.id}.${imgExt}`}
+                    src={`/signs/${sign.id}.png`}
                     alt={sign.label}
                     style={s.gifImg}
                     onError={() => setImgError(true)}
@@ -316,9 +294,7 @@ export default function Camara() {
               </div>
               {mode === 'train' && (
                 <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, textAlign: 'center', marginTop: 10, lineHeight: 1.6 }}>
-                  {sign.type === 'motion'
-                    ? <>Haz el <strong>movimiento completo</strong> de la letra frente a la cámara, repítelo varias veces.</>
-                    : <>Mantén la <strong>postura de la mano</strong> frente a la cámara unos segundos, moviéndola ligeramente de ángulo.</>}
+                  Mantén la <strong>postura de la mano</strong> frente a la cámara unos segundos, moviéndola ligeramente de ángulo.
                 </p>
               )}
               <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 10 }}>
@@ -389,10 +365,10 @@ export default function Camara() {
               {mode === 'train' && (
                 <div style={{ marginTop: 12 }}>
                   <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, marginBottom: 6, fontWeight: 700 }}>
-                    Progreso de "{sign.label}": {trainCount[sign.id] || 0}/{targetCount}
+                    Progreso de "{sign.label}": {trainCount[sign.id] || 0}/{TARGET_SAMPLES}
                   </div>
                   <div style={{ width: '100%', height: 8, background: 'rgba(255,255,255,0.1)', borderRadius: 10, overflow: 'hidden' }}>
-                    <div style={{ height: '100%', width: `${Math.min(100, ((trainCount[sign.id] || 0) / targetCount) * 100)}%`, background: '#c4b5fd', borderRadius: 10 }} />
+                    <div style={{ height: '100%', width: `${Math.min(100, ((trainCount[sign.id] || 0) / TARGET_SAMPLES) * 100)}%`, background: '#c4b5fd', borderRadius: 10 }} />
                   </div>
                 </div>
               )}
