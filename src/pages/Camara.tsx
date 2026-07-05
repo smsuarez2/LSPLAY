@@ -28,7 +28,8 @@ export default function Camara() {
   const streamRef = useRef<MediaStream | null>(null);
   const frameLoopRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const [mode, setMode]       = useState<Mode>('menu');
+  const isAdmin = new URLSearchParams(window.location.search).get('admin') === 'true';
+  const [mode, setMode] = useState<Mode>(isAdmin ? 'menu' : 'practice');
   const [active, setActive]   = useState(false);
   const [current, setCurrent] = useState(0);
   const [result, setResult]   = useState<SignResult>('none');
@@ -43,7 +44,6 @@ export default function Camara() {
   const [imgError, setImgError] = useState(false);
   const [completedLetters, setCompletedLetters] = useState<Set<string>>(new Set());
 
-  const isAdmin = new URLSearchParams(window.location.search).get('admin') === 'true';
   const sign = SIGNS[current];
 
   useEffect(() => { setImgError(false); }, [current]);
@@ -195,27 +195,27 @@ export default function Camara() {
 
   return (
     <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg,#1e1b4b,#312e81)', padding: '32px 24px' }}>
-      <h1 style={s.title}>🔤 Abecedario con Inteligencia Artificial</h1>
-      <p style={s.sub}>Detección del alfabeto dactilológico con Python + MediaPipe</p>
+      <h1 style={s.title}>{isAdmin ? '🔤 Abecedario con Inteligencia Artificial' : '🔤 ¡Practica el Abecedario!'}</h1>
+      <p style={s.sub}>{isAdmin ? 'Detección del alfabeto dactilológico con Python + MediaPipe' : 'Haz la letra con tu mano frente a la cámara'}</p>
 
       <canvas ref={canvasRef} style={{ display: 'none' }} />
 
       {!serverOnline && (
         <div style={s.serverError}>
-          ⚠️ <strong>Servidor Python no disponible.</strong> Verifica que esté corriendo en Railway.
+          {isAdmin ? '⚠️ Servidor Python no disponible. Verifica que esté corriendo en Railway.' : '⚠️ No se pudo conectar. Intenta de nuevo en un momento.'}
         </div>
       )}
 
-      <div style={s.modeTabs}>
-        {isAdmin && (
+      {isAdmin && (
+        <div style={s.modeTabs}>
           <button style={{ ...s.modeTab, ...(mode === 'train' ? s.modeActive : {}) }} onClick={() => changeMode('train')}>
             🎯 Entrenar letras
           </button>
-        )}
-        <button style={{ ...s.modeTab, ...(mode === 'practice' ? s.modeActive : {}) }} onClick={() => changeMode('practice')}>
-          🏋️ Practicar
-        </button>
-      </div>
+          <button style={{ ...s.modeTab, ...(mode === 'practice' ? s.modeActive : {}) }} onClick={() => changeMode('practice')}>
+            🏋️ Practicar
+          </button>
+        </div>
+      )}
 
       {mode === 'menu' && (
         <div style={{ maxWidth: 560, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
