@@ -1,5 +1,15 @@
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Icon } from '@iconify/react';
+
+type Usuario = {
+  id: number;
+  nombre: string;
+  correo: string;
+  rol: string;
+  xp: number;
+  nivel: number;
+};
 
 const badges = [
   { emoji: 'fluent-emoji-flat:glowing-star',    title: 'Primera seña',  desc: 'Aprendiste tu primera seña',     earned: true  },
@@ -20,17 +30,54 @@ const history = [
 ];
 
 export default function Perfil() {
-  const navigate   = useNavigate();
-  const totalXP    = 60;
-  const nextXP     = 500;
-  const pct        = Math.round((totalXP / nextXP) * 100);
-  const earnedCount = badges.filter(b => b.earned).length;
+  const navigate = useNavigate();
+  const [usuario, setUsuario] = useState<Usuario | null>(null);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const usuarioGuardado = localStorage.getItem('usuario');
+
+    if (!token || !usuarioGuardado) {
+      navigate('/login');
+      return;
+    }
+
+    try {
+      setUsuario(JSON.parse(usuarioGuardado));
+    } catch {
+      navigate('/login');
+      return;
+    }
+    setChecking(false);
+  }, [navigate]);
+
+  function handleLogout() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('usuario');
+    navigate('/login');
+  }
+
+  // Mientras se verifica la sesión, no mostramos nada (evita el parpadeo de datos falsos)
+  if (checking || !usuario) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#faf7ff' }}>
+        <p style={{ fontFamily: "'Fredoka One',cursive", fontSize: 18, color: '#9e8ec0' }}>Cargando...</p>
+      </div>
+    );
+  }
+
+  const totalXP     = usuario.xp ?? 0;
+  const nextXP       = 500;
+  const pct          = Math.round((totalXP / nextXP) * 100);
+  const earnedCount  = badges.filter(b => b.earned).length;
+  const inicial      = usuario.nombre?.charAt(0).toUpperCase() || '?';
 
   return (
     <div style={{ minHeight: '100vh', background: '#faf7ff', padding: '40px 32px' }}>
       <div style={s.topBar}>
         <h1 style={s.title}>Mi Perfil</h1>
-        <button style={s.logoutBtn} onClick={() => navigate('/login')}>
+        <button style={s.logoutBtn} onClick={handleLogout}>
           <Icon icon="fluent-emoji-flat:door" width={18} style={{verticalAlign:'middle'}} />
           Cerrar sesión
         </button>
@@ -40,10 +87,11 @@ export default function Perfil() {
       <div style={s.inner}>
         {/* Header perfil */}
         <div style={s.header}>
-          <div style={s.avatar}>S</div>
+          <div style={s.avatar}>{inicial}</div>
           <div style={{ flex: 1 }}>
-            <div style={{ fontFamily: "'Fredoka One',cursive", fontSize: 26, color: '#3d2c6e' }}>¡Hola, Jugador!</div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#9e8ec0', marginTop: 4 }}>Nivel 1 · {totalXP} XP · ¡Sigue jugando para subir de nivel!</div>
+            <div style={{ fontFamily: "'Fredoka One',cursive", fontSize: 26, color: '#3d2c6e' }}>¡Hola, {usuario.nombre}!</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: '#c4b5fd', marginTop: 2 }}>{usuario.correo}</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#9e8ec0', marginTop: 4 }}>Nivel {usuario.nivel ?? 1} · {totalXP} XP · ¡Sigue jugando para subir de nivel!</div>
             <div style={{ marginTop: 10, maxWidth: 280 }}>
               <div className="prog-bar-outer">
                 <div className="prog-bar-inner" style={{ width: `${pct}%` }} />
