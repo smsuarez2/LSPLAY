@@ -85,9 +85,9 @@ export default function Aprender() {
                 ...(selected === letter ? s.signBoxSelected : {}),
               }}>
 
-              {/* Imagen real de la seña */}
+              {/* Imagen de solo la mano (carpeta /hands/, distinta de /signs/ que usa Camara.tsx) */}
               <img
-                src={`/signs/${letter.toLowerCase()}.png`}
+                src={`/hands/${letter.toLowerCase()}.png`}
                 alt={`Seña ${letter}`}
                 style={s.signImg}
               />
@@ -118,7 +118,7 @@ export default function Aprender() {
 
             {/* Imagen grande */}
             <img
-              src={`/signs/${selected.toLowerCase()}.png`}
+              src={`/hands/${selected.toLowerCase()}.png`}
               alt={`Seña ${selected}`}
               style={s.modalImg}
             />
