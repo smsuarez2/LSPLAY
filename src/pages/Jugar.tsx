@@ -5,7 +5,7 @@ const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
 function SignImg({ letter, size = 60 }: { letter: string; size?: number }) {
   return (
     <img
-      src={`/signs/${letter.toLowerCase()}.png`}
+      src={`/hands/${letter.toLowerCase()}.png`}
       alt={`Seña ${letter}`}
       style={{ width: size, height: size, objectFit: 'contain', display: 'block', margin: '0 auto' }}
     />
