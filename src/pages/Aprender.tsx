@@ -1,34 +1,70 @@
 import { useState } from 'react';
 
-const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+// Abecedario dactilológico completo de LSE: 30 elementos (26 letras + CH, LL, RR, Ñ)
+const ALPHABET: { id: string; label: string }[] = [
+  { id: 'a',    label: 'A' },
+  { id: 'b',    label: 'B' },
+  { id: 'c',    label: 'C' },
+  { id: 'ch',   label: 'CH' },
+  { id: 'd',    label: 'D' },
+  { id: 'e',    label: 'E' },
+  { id: 'f',    label: 'F' },
+  { id: 'g',    label: 'G' },
+  { id: 'h',    label: 'H' },
+  { id: 'i',    label: 'I' },
+  { id: 'j',    label: 'J' },
+  { id: 'k',    label: 'K' },
+  { id: 'l',    label: 'L' },
+  { id: 'll',   label: 'LL' },
+  { id: 'm',    label: 'M' },
+  { id: 'n',    label: 'N' },
+  { id: 'enye', label: 'Ñ' },
+  { id: 'o',    label: 'O' },
+  { id: 'p',    label: 'P' },
+  { id: 'q',    label: 'Q' },
+  { id: 'r',    label: 'R' },
+  { id: 'rr',   label: 'RR' },
+  { id: 's',    label: 'S' },
+  { id: 't',    label: 'T' },
+  { id: 'u',    label: 'U' },
+  { id: 'v',    label: 'V' },
+  { id: 'w',    label: 'W' },
+  { id: 'x',    label: 'X' },
+  { id: 'y',    label: 'Y' },
+  { id: 'z',    label: 'Z' },
+];
 
 const signDescriptions: Record<string, string> = {
-  A:'Cierra el puño con el pulgar al lado.',
-  B:'Dedos juntos y extendidos hacia arriba, pulgar doblado.',
-  C:'Curva los dedos formando una C.',
-  D:'Dedo índice arriba, los demás forman un círculo con el pulgar.',
-  E:'Dobla los dedos hacia abajo sobre el pulgar.',
-  F:'Une el pulgar con el índice, los demás extendidos.',
-  G:'Índice y pulgar apuntan hacia el lado.',
-  H:'Índice y medio extendidos juntos hacia el lado.',
-  I:'Solo el meñique extendido hacia arriba.',
-  J:'Meñique extendido y traza una J en el aire.',
-  K:'Índice arriba, medio diagonal, pulgar entre ellos.',
-  L:'Índice arriba y pulgar hacia el lado (forma L).',
-  M:'Tres dedos doblados sobre el pulgar.',
-  N:'Dos dedos doblados sobre el pulgar.',
-  O:'Todos los dedos forman un círculo (forma O).',
-  P:'Como la K pero apuntando hacia abajo.',
-  Q:'Como la G pero apuntando hacia abajo.',
-  R:'Índice y medio cruzados, extendidos.',
-  S:'Puño cerrado con el pulgar sobre los dedos.',
-  T:'Pulgar entre índice y medio.',
-  U:'Índice y medio extendidos y juntos hacia arriba.',
-  V:'Índice y medio extendidos en forma de V.',
-  W:'Índice, medio y anular extendidos.',
-  X:'Índice doblado en gancho.',
-  Y:'Pulgar y meñique extendidos (los demás cerrados).',
-  Z:'Traza una Z en el aire con el índice.',
+  a:'Cierra el puño con el pulgar al lado.',
+  b:'Dedos juntos y extendidos hacia arriba, pulgar doblado.',
+  c:'Curva los dedos formando una C.',
+  ch:'Como la C, con un pequeño movimiento repetido.',
+  d:'Dedo índice arriba, los demás forman un círculo con el pulgar.',
+  e:'Dobla los dedos hacia abajo sobre el pulgar.',
+  f:'Une el pulgar con el índice, los demás extendidos.',
+  g:'Índice y pulgar apuntan hacia el lado.',
+  h:'Índice y medio extendidos juntos hacia el lado.',
+  i:'Solo el meñique extendido hacia arriba.',
+  j:'Meñique extendido y traza una J en el aire.',
+  k:'Índice arriba, medio diagonal, pulgar entre ellos.',
+  l:'Índice arriba y pulgar hacia el lado (forma L).',
+  ll:'Como la L, con un pequeño movimiento hacia el lado.',
+  m:'Tres dedos doblados sobre el pulgar.',
+  n:'Dos dedos doblados sobre el pulgar.',
+  enye:'Como la N, con un pequeño movimiento ondulado (representa la virgulilla).',
+  o:'Todos los dedos forman un círculo (forma O).',
+  p:'Como la K pero apuntando hacia abajo.',
+  q:'Como la G pero apuntando hacia abajo.',
+  r:'Índice y medio cruzados, extendidos.',
+  rr:'Como la R, con un pequeño movimiento repetido.',
+  s:'Puño cerrado con el pulgar sobre los dedos.',
+  t:'Pulgar entre índice y medio.',
+  u:'Índice y medio extendidos y juntos hacia arriba.',
+  v:'Índice y medio extendidos en forma de V.',
+  w:'Índice, medio y anular extendidos.',
+  x:'Índice doblado en gancho.',
+  y:'Pulgar y meñique extendidos (los demás cerrados).',
+  z:'Traza una Z en el aire con el índice.',
 };
 
 export default function Aprender() {
@@ -36,17 +72,18 @@ export default function Aprender() {
   const [learned, setLearned]   = useState<Set<string>>(new Set());
   const [filter, setFilter]     = useState('Todas');
 
-  const groups: Record<string, string[]> = {
-    'Todas': alphabet,
-    'A – F':  alphabet.slice(0, 6),
-    'G – L':  alphabet.slice(6, 12),
-    'M – R':  alphabet.slice(12, 18),
-    'S – Z':  alphabet.slice(18),
+  const groups: Record<string, typeof ALPHABET> = {
+    'Todas':  ALPHABET,
+    'A – E':  ALPHABET.slice(0, 6),
+    'F – L':  ALPHABET.slice(6, 13),
+    'LL – Q': ALPHABET.slice(13, 19),
+    'R – Z':  ALPHABET.slice(19),
   };
   const visible = groups[filter];
+  const selectedItem = ALPHABET.find(l => l.id === selected);
 
-  function markLearned(letter: string) {
-    setLearned(prev => new Set([...prev, letter]));
+  function markLearned(id: string) {
+    setLearned(prev => new Set([...prev, id]));
   }
 
   return (
@@ -66,40 +103,39 @@ export default function Aprender() {
 
       {/* Barra de progreso */}
       <div style={s.progWrap}>
-        <span style={s.progLabel}>{learned.size} / {alphabet.length} señas aprendidas</span>
+        <span style={s.progLabel}>{learned.size} / {ALPHABET.length} señas aprendidas</span>
         <div className="prog-bar-outer" style={{ flex: 1, maxWidth: 400 }}>
           <div className="prog-bar-inner"
-            style={{ width: `${(learned.size / alphabet.length) * 100}%` }} />
+            style={{ width: `${(learned.size / ALPHABET.length) * 100}%` }} />
         </div>
       </div>
 
       {/* Grid de tarjetas */}
       <div style={s.grid}>
         {visible.map(letter => {
-          const isLearned = learned.has(letter);
+          const isLearned = learned.has(letter.id);
           return (
-            <div key={letter} onClick={() => setSelected(letter)}
+            <div key={letter.id} onClick={() => setSelected(letter.id)}
               style={{
                 ...s.signBox,
                 ...(isLearned ? s.signBoxLearned : {}),
-                ...(selected === letter ? s.signBoxSelected : {}),
+                ...(selected === letter.id ? s.signBoxSelected : {}),
               }}>
 
-              {/* Imagen de solo la mano (carpeta /hands/, distinta de /signs/ que usa Camara.tsx) */}
               <img
-                src={`/hands/${letter.toLowerCase()}.png`}
-                alt={`Seña ${letter}`}
+                src={`/hands/${letter.id}.png`}
+                alt={`Seña ${letter.label}`}
                 style={s.signImg}
               />
 
               <span style={{
                 fontFamily: "'Fredoka One',cursive",
-                fontSize: 28,
+                fontSize: letter.label.length > 1 ? 20 : 28,
                 color: isLearned ? '#267a50' : '#7c3aed',
                 marginTop: 6,
                 display: 'block',
               }}>
-                {letter}
+                {letter.label}
               </span>
 
               <span style={isLearned ? s.checkBadge : s.viewBadge}>
@@ -111,24 +147,23 @@ export default function Aprender() {
       </div>
 
       {/* Modal */}
-      {selected && (
+      {selectedItem && (
         <div style={s.modalOverlay} onClick={() => setSelected(null)}>
           <div style={s.modal} onClick={e => e.stopPropagation()}>
             <button style={s.closeBtn} onClick={() => setSelected(null)}>✕</button>
 
-            {/* Imagen grande */}
             <img
-              src={`/hands/${selected.toLowerCase()}.png`}
-              alt={`Seña ${selected}`}
+              src={`/hands/${selectedItem.id}.png`}
+              alt={`Seña ${selectedItem.label}`}
               style={s.modalImg}
             />
 
-            <h2 style={s.modalLetter}>{selected}</h2>
-            <p style={s.modalDesc}>{signDescriptions[selected]}</p>
+            <h2 style={s.modalLetter}>{selectedItem.label}</h2>
+            <p style={s.modalDesc}>{signDescriptions[selectedItem.id]}</p>
 
             <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
               <button style={s.btnLearn}
-                onClick={() => { markLearned(selected); setSelected(null); }}>
+                onClick={() => { markLearned(selectedItem.id); setSelected(null); }}>
                 ✅ ¡Ya la aprendí! +30 XP
               </button>
               <button style={s.btnClose} onClick={() => setSelected(null)}>
