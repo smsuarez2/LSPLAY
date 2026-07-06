@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Icon } from '@iconify/react';
 import LOGO from '../assets/logo.png';
 
+const API = 'https://lsplay-backend-production.up.railway.app';
+
 const floaters = [
   { icon: 'fluent-emoji-flat:waving-hand',              left: '6%',  top: '12%', size: 52, delay: '0s',    dur: '5s'  },
   { icon: 'fluent-emoji-flat:victory-hand',             left: '85%', top: '8%',  size: 44, delay: '0.7s',  dur: '4.5s'},
@@ -16,17 +18,39 @@ const floaters = [
 
 export default function Login() {
   const navigate = useNavigate();
-  const [user,     setUser]     = useState('');
-  const [password, setPassword] = useState('');
-  const [showPass, setShowPass] = useState(false);
-  const [error,    setError]    = useState('');
+  const [correo,     setCorreo]     = useState('');
+  const [password,   setPassword]   = useState('');
+  const [showPass,   setShowPass]   = useState(false);
+  const [error,      setError]      = useState('');
+  const [loading,    setLoading]    = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (user === 'admin' && password === 'admin') {
+    setError('');
+    setLoading(true);
+    try {
+      const res = await fetch(`${API}/api/usuarios/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ correo, contrasena: password }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || 'No se pudo iniciar sesión.');
+        setLoading(false);
+        return;
+      }
+
+      // Guardar sesión en el navegador
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('usuario', JSON.stringify(data.usuario));
+
       navigate('/');
-    } else {
-      setError('Usuario o contraseña incorrectos. Intenta con admin / admin');
+    } catch (err) {
+      setError('No se pudo conectar con el servidor. Intenta de nuevo.');
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -41,10 +65,6 @@ export default function Login() {
         @keyframes cardIn {
           from { opacity:0; transform:translateY(28px) scale(0.97); }
           to   { opacity:1; transform:translateY(0)    scale(1);    }
-        }
-        @keyframes badgeIn {
-          from { opacity:0; transform:scale(0.8); }
-          to   { opacity:1; transform:scale(1);   }
         }
         .lp-input {
           width:100%; padding:13px 16px; font-size:15px;
@@ -67,18 +87,17 @@ export default function Login() {
           transition:transform .13s, box-shadow .13s;
           display:flex; align-items:center; justify-content:center; gap:10px;
         }
-        .lp-btn:hover  { transform:translateY(-3px); box-shadow:0 9px 0 #4c1d95; }
-        .lp-btn:active { transform:translateY(2px);  box-shadow:0 3px 0 #4c1d95; }
+        .lp-btn:hover:not(:disabled)  { transform:translateY(-3px); box-shadow:0 9px 0 #4c1d95; }
+        .lp-btn:active:not(:disabled) { transform:translateY(2px);  box-shadow:0 3px 0 #4c1d95; }
+        .lp-btn:disabled { opacity:0.6; cursor:not-allowed; }
         .lp-eye { background:none; border:none; cursor:pointer; padding:4px;
                   display:flex; align-items:center; transition:opacity .15s; }
         .lp-eye:hover { opacity:.7; }
-        .lp-badge:hover { border-color:#c4b5fd; background:#f3edfc; transform:translateY(-2px); }
         .lp-forgot:hover { text-decoration:underline; }
         .lp-reg:hover { text-decoration:underline; }
       `}</style>
 
       <div style={s.page}>
-        {/* Floating background icons */}
         {floaters.map((f, i) => (
           <span key={i} style={{
             position:'absolute', left:f.left, top:f.top, zIndex:0, opacity:.14,
@@ -89,13 +108,9 @@ export default function Login() {
           </span>
         ))}
 
-        {/* Card */}
         <div style={s.card}>
-
-          {/* Logo */}
           <img src={LOGO} alt="LS Play" style={s.logo} />
 
-          {/* Badge */}
           <div style={s.chip}>
             <Icon icon="fluent-emoji-flat:sparkles" width={16} />
             ¡Bienvenido de nuevo!
@@ -105,23 +120,21 @@ export default function Login() {
           <p style={s.sub}>Continúa aprendiendo lengua de señas</p>
 
           <form onSubmit={handleSubmit} style={s.form}>
-            {/* Usuario */}
             <div style={s.field}>
               <label style={s.label}>
-                <Icon icon="fluent-emoji-flat:bust-in-silhouette" width={14} style={{verticalAlign:'middle',marginRight:5}} />
-                Usuario
+                <Icon icon="fluent-emoji-flat:e-mail" width={14} style={{verticalAlign:'middle',marginRight:5}} />
+                Correo electrónico
               </label>
               <input
                 className="lp-input"
-                type="text"
-                value={user}
-                onChange={e => { setUser(e.target.value); setError(''); }}
-                placeholder="admin"
+                type="email"
+                value={correo}
+                onChange={e => { setCorreo(e.target.value); setError(''); }}
+                placeholder="tucorreo@ejemplo.com"
                 required
               />
             </div>
 
-            {/* Password */}
             <div style={s.field}>
               <label style={s.label}>
                 <Icon icon="fluent-emoji-flat:locked" width={14} style={{verticalAlign:'middle',marginRight:5}} />
@@ -145,10 +158,6 @@ export default function Login() {
               </div>
             </div>
 
-            <div style={{ textAlign:'right', marginTop:-4 }}>
-              <a href="#" className="lp-forgot" style={s.forgot}>¿Olvidaste tu contraseña?</a>
-            </div>
-
             {error && (
               <div style={s.errorBox}>
                 <Icon icon="fluent-emoji-flat:warning" width={16} style={{verticalAlign:'middle',marginRight:6}} />
@@ -156,20 +165,17 @@ export default function Login() {
               </div>
             )}
 
-            <button type="submit" className="lp-btn">
-              ¡Entrar!
+            <button type="submit" className="lp-btn" disabled={loading}>
+              {loading ? 'Entrando...' : '¡Entrar!'}
             </button>
           </form>
 
-          {/* Register */}
           <p style={s.regText}>
             ¿No tienes cuenta?{' '}
             <Link to="/register" className="lp-reg" style={s.regLink}>Regístrate gratis</Link>
           </p>
 
-          {/* Divider */}
           <div style={s.divider}><span style={s.dividerText}>tu progreso te espera</span></div>
-
         </div>
       </div>
     </>
@@ -194,13 +200,6 @@ const s: Record<string, React.CSSProperties> = {
     animation: 'cardIn 0.45s cubic-bezier(0.34,1.56,0.64,1) both',
     overflow: 'hidden',
   },
-  topBar:   {
-    height: 6,
-    background: 'linear-gradient(90deg, #c4b5fd, #f9a8d4, #86efac, #fcd34d, #c4b5fd)',
-    backgroundSize: '200% 100%',
-    margin: '0 -40px 32px',
-    borderRadius: '0 0 0 0',
-  },
   logo:     {
     height: 84, width: 'auto', objectFit: 'contain',
     display: 'block', margin: '0 auto 16px',
@@ -218,19 +217,9 @@ const s: Record<string, React.CSSProperties> = {
   form:     { display:'flex', flexDirection:'column', gap:14, textAlign:'left' },
   field:    { display:'flex', flexDirection:'column', gap:7 },
   label:    { fontSize:13, fontWeight:800, color:'#5b21b6' },
-  forgot:   { fontSize:12, fontWeight:800, color:'#7c3aed', textDecoration:'none' },
   regText:  { fontSize:13, fontWeight:700, color:'#9e8ec0', marginTop:22, marginBottom:18 },
   regLink:  { color:'#7c3aed', fontWeight:800, textDecoration:'none' },
   divider:  { display:'flex', alignItems:'center', gap:10, margin:'0 0 18px' },
   dividerText: { fontSize:11, fontWeight:800, color:'#c4b5fd', whiteSpace:'nowrap', flex:1, textAlign:'center', position:'relative' as const },
-  badges:   { display:'flex', gap:10 },
-  badge:    {
-    flex:1, background:'#faf7ff', border:'2px solid #e8e0f5',
-    borderRadius:16, padding:'12px 8px', textAlign:'center',
-    cursor:'default', transition:'all .2s',
-    animation:'badgeIn 0.4s ease both',
-  },
-  badgeVal: { display:'block', fontFamily:"'Fredoka One',cursive", fontSize:20, color:'#7c3aed', lineHeight:1 },
-  badgeLbl: { display:'block', fontSize:10, fontWeight:800, color:'#9e8ec0', marginTop:2 },
   errorBox: { background:'rgba(252,165,165,0.15)', border:'2px solid #fca5a5', borderRadius:12, padding:'10px 14px', color:'#7f1d1d', fontWeight:700, fontSize:13 },
 };

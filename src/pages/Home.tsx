@@ -16,23 +16,29 @@ const steps = [
   { num: '3', title: '¡Gana estrellas!',    desc: 'Completa niveles y desbloquea logros especiales.',                       bg: '#fcd34d', color: '#78350f', shadow: '#d97706' },
 ];
 
+// Datos reales del proyecto (nada de cifras de uso inventadas)
+const highlights = [
+  { icon: 'fluent-emoji-flat:abc',                 label: '26 Letras del abecedario' },
+  { icon: 'fluent-emoji-flat:robot',                label: 'Detección con IA en tiempo real' },
+  { icon: 'fluent-emoji-flat:camera-with-flash',    label: 'Funciona con tu cámara' },
+  { icon: 'fluent-emoji-flat:money-bag',            label: '100% gratuito' },
+];
+
 export default function Home() {
-  const counters = useRef<HTMLSpanElement[]>([]);
+  const counterRef = useRef<HTMLSpanElement>(null);
 
   useEffect(() => {
-    const targets = [27, 4, 8, 240];
-    const suffixes = ['', '', '', '+'];
-    targets.forEach((target, i) => {
-      const el = counters.current[i];
-      if (!el) return;
-      let n = 0;
-      const step = Math.ceil(target / 70);
-      const t = setInterval(() => {
-        n = Math.min(n + step, target);
-        el.textContent = n + suffixes[i];
-        if (n >= target) clearInterval(t);
-      }, 18);
-    });
+    const target = 26;
+    const el = counterRef.current;
+    if (!el) return;
+    let n = 0;
+    const step = Math.ceil(target / 40);
+    const t = setInterval(() => {
+      n = Math.min(n + step, target);
+      el.textContent = String(n);
+      if (n >= target) clearInterval(t);
+    }, 18);
+    return () => clearInterval(t);
   }, []);
 
   return (
@@ -58,12 +64,16 @@ export default function Home() {
         </div>
       </section>
 
-      {/* STATS */}
+      {/* HIGHLIGHTS (datos reales del proyecto, no estadisticas de uso) */}
       <div style={s.stats}>
-        {['Señas','Niveles','Logros','Niños aprendiendo'].map((lbl, i) => (
-          <div key={lbl} style={s.stat}>
-            <span style={s.statN} ref={el => { if (el) counters.current[i] = el; }}>0</span>
-            <span style={s.statL}>{lbl}</span>
+        <div style={s.stat}>
+          <span style={s.statN} ref={counterRef}>0</span>
+          <span style={s.statL}>Letras del abecedario</span>
+        </div>
+        {highlights.slice(1).map(h => (
+          <div key={h.label} style={s.statBadge}>
+            <Icon icon={h.icon} width={26} />
+            <span style={s.statBadgeL}>{h.label}</span>
           </div>
         ))}
       </div>
@@ -127,10 +137,12 @@ const s: Record<string, React.CSSProperties> = {
   btnMain:   { fontFamily: "'Fredoka One',cursive", background: '#7c3aed', color: '#fff', borderRadius: 50, padding: '14px 32px', fontSize: 20, boxShadow: '0 5px 0 #4c1d95', textDecoration: 'none', display: 'inline-block', border: 'none', cursor: 'pointer' },
   btnSec:    { fontFamily: "'Fredoka One',cursive", background: '#fff', color: '#7c3aed', border: '2px solid #c4b5fd', borderRadius: 50, padding: '12px 28px', fontSize: 20, boxShadow: '0 5px 0 #e8e0f5', textDecoration: 'none', display: 'inline-block', cursor: 'pointer' },
   heroLogo:  { width: 'min(280px,40vw)', height: 'auto', filter: 'drop-shadow(0 12px 32px rgba(109,40,217,0.2))', animation: 'float 3s ease-in-out infinite' },
-  stats:     { background: '#7c3aed', padding: '20px 32px', display: 'flex', justifyContent: 'center', gap: 48, flexWrap: 'wrap' },
+  stats:     { background: '#7c3aed', padding: '20px 32px', display: 'flex', justifyContent: 'center', gap: 40, flexWrap: 'wrap', alignItems: 'center' },
   stat:      { textAlign: 'center', color: '#fff' },
   statN:     { fontFamily: "'Fredoka One',cursive", fontSize: 34, color: '#fcd34d', display: 'block' },
   statL:     { fontSize: 12, fontWeight: 800, opacity: 0.85 },
+  statBadge:  { display: 'flex', alignItems: 'center', gap: 8, color: '#fff' },
+  statBadgeL: { fontSize: 12, fontWeight: 800, opacity: 0.9, maxWidth: 110, textAlign: 'left', lineHeight: 1.3 },
   progSection: { background: '#fff', padding: '28px 32px', borderBottom: '2px solid #e8e0f5', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 24, flexWrap: 'wrap' },
   secTitle:  { fontFamily: "'Fredoka One',cursive", fontSize: 'clamp(26px,4vw,38px)', textAlign: 'center', marginBottom: 8, color: '#3d2c6e' },
   secSub:    { textAlign: 'center', fontSize: 16, fontWeight: 600, color: '#9e8ec0', marginBottom: 40 },
