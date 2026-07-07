@@ -163,6 +163,10 @@ export default function Camara() {
     changeSign((current + 1) % SIGNS.length);
   }
 
+  function retrySign() {
+    setResult('none'); setChecked(false); setStatus(''); setDetected(null);
+  }
+
   async function changeMode(m: Mode) {
     await stopCamera();
     setMode(m);
@@ -394,7 +398,19 @@ export default function Camara() {
                 )}
               </div>
 
-              {mode === 'practice' && result !== 'none' && (
+              {mode === 'practice' && result === 'incorrect' && (
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'center', marginTop: 10, flexWrap: 'wrap' }}>
+                  <button style={{ ...s.btnCam, background: '#c4b5fd', color: '#4c1d95', boxShadow: '0 4px 0 #7c3aed' }}
+                    onClick={retrySign}>
+                    🔄 Intentar de nuevo
+                  </button>
+                  <button style={{ ...s.btnCam, background: '#fcd34d', color: '#78350f', boxShadow: '0 4px 0 #d97706' }}
+                    onClick={nextSign}>
+                    Saltar letra →
+                  </button>
+                </div>
+              )}
+              {mode === 'practice' && result === 'correct' && (
                 <button style={{ ...s.btnCam, background: '#fcd34d', color: '#78350f', boxShadow: '0 4px 0 #d97706', display: 'block', margin: '10px auto 0' }}
                   onClick={nextSign}>
                   Siguiente letra →
