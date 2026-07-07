@@ -42,11 +42,12 @@ export default function Camara() {
   const [status, setStatus]   = useState('');
   const [serverOnline, setServerOnline] = useState(true);
   const [imgError, setImgError] = useState(false);
+  const [showHint, setShowHint] = useState(false);
   const [completedLetters, setCompletedLetters] = useState<Set<string>>(new Set());
 
   const sign = SIGNS[current];
 
-  useEffect(() => { setImgError(false); }, [current]);
+  useEffect(() => { setImgError(false); setShowHint(false); }, [current]);
 
   useEffect(() => {
     fetch(`${API}/`).then(r => r.ok ? setServerOnline(true) : setServerOnline(false))
@@ -313,7 +314,7 @@ export default function Camara() {
             <div style={s.col}>
               <div style={s.colLabel}>{mode === 'train' ? 'Letra a entrenar:' : 'Adivina la letra:'}</div>
               <div style={s.gifBox}>
-                {mode === 'practice' && result !== 'correct' ? (
+                {mode === 'practice' && result !== 'correct' && !showHint ? (
                   <div style={s.letterHintBox}>
                     <span style={{ fontFamily: "'Fredoka One',cursive", fontSize: 130, color: '#c4b5fd' }}>{sign.label}</span>
                     <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 12, textAlign: 'center', padding: '0 16px' }}>
@@ -336,6 +337,11 @@ export default function Camara() {
                   />
                 )}
               </div>
+              {mode === 'practice' && result !== 'correct' && (
+                <button style={s.hintBtn} onClick={() => setShowHint(v => !v)}>
+                  {showHint ? '🙈 Ocultar ayuda' : '💡 Ver ayuda'}
+                </button>
+              )}
               <div style={s.signNameBox}>
                 <span style={s.signName}>Letra {sign.label}</span>
               </div>
@@ -458,6 +464,7 @@ const s: Record<string, React.CSSProperties> = {
   signTabs:      { display: 'flex', gap: 6, justifyContent: 'center', flexWrap: 'wrap', marginBottom: 20, maxWidth: 800, marginLeft: 'auto', marginRight: 'auto' },
   letterTab:     { fontFamily: "'Fredoka One',cursive", fontSize: 13, padding: '6px 10px', minWidth: 34, borderRadius: 10, border: '2px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.07)', color: '#fff', cursor: 'pointer' },
   signTabActive: { background: '#c4b5fd', color: '#4c1d95', borderColor: '#c4b5fd' },
+  hintBtn:       { display: 'block', margin: '10px auto 0', fontFamily: "'Fredoka One',cursive", fontSize: 13, background: 'rgba(252,211,77,0.15)', color: '#fcd34d', border: '1.5px solid rgba(252,211,77,0.4)', borderRadius: 20, padding: '6px 16px', cursor: 'pointer' },
   letterHintBox: { width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, rgba(124,58,237,0.15), rgba(196,181,253,0.08))' },
   letterFallback: { width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: 'rgba(196,181,253,0.08)' },
   progressBarBox:   { maxWidth: 500, margin: '0 auto 20px', textAlign: 'center' },
