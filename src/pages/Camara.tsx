@@ -148,6 +148,15 @@ export default function Camara() {
     }
   }
 
+  function speak(text: string, lang: string) {
+    if (!('speechSynthesis' in window)) return;
+    window.speechSynthesis.cancel();
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = lang;
+    utter.rate = 1;
+    window.speechSynthesis.speak(utter);
+  }
+
   function checkSign() {
     setChecked(true);
     if (detected && detected.label === sign.id && detected.conf >= 55) {
@@ -156,7 +165,14 @@ export default function Camara() {
       setCompletedLetters(prev => new Set(prev).add(sign.id));
     } else {
       setResult('incorrect');
+      speak('Incorrect', 'en-US');
     }
+  }
+
+  function advanceWithVoice() {
+    const nextIndex = (current + 1) % SIGNS.length;
+    speak(SIGNS[nextIndex].label, 'es-ES');
+    changeSign(nextIndex);
   }
 
   function nextSign() {
@@ -184,7 +200,7 @@ export default function Camara() {
   useEffect(() => {
     if (mode === 'practice' && result === 'correct') {
       const timer = setTimeout(() => {
-        nextSign();
+        advanceWithVoice();
       }, 2000);
       return () => clearTimeout(timer);
     }
@@ -418,7 +434,7 @@ export default function Camara() {
               )}
               {mode === 'practice' && result === 'correct' && (
                 <button style={{ ...s.btnCam, background: '#fcd34d', color: '#78350f', boxShadow: '0 4px 0 #d97706', display: 'block', margin: '10px auto 0' }}
-                  onClick={nextSign}>
+                  onClick={advanceWithVoice}>
                   Siguiente letra →
                 </button>
               )}
