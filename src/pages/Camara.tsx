@@ -16,6 +16,7 @@ const SIGNS = [
 ] as const;
 
 const API = 'https://lsplay-python-backend-production.up.railway.app';
+const API_AUTH = 'https://lsplay-backend-production.up.railway.app';
 const FRAME_INTERVAL_MS = 150;
 const TARGET_SAMPLES = 12;
 
@@ -34,6 +35,8 @@ export default function Camara() {
   const [current, setCurrent] = useState(0);
   const [result, setResult]   = useState<SignResult>('none');
   const [score, setScore]     = useState(0);
+  const [fails, setFails]     = useState(0);
+  const [saving, setSaving]   = useState(false);
   const [checked, setChecked] = useState(false);
   const [handVisible, setHandVisible] = useState(false);
   const [detected, setDetected] = useState<{ label: string; conf: number } | null>(null);
@@ -165,6 +168,7 @@ export default function Camara() {
       setCompletedLetters(prev => new Set(prev).add(sign.id));
     } else {
       setResult('incorrect');
+      setFails(f => f + 1);
       speak('Incorrect', 'en-US');
     }
   }
@@ -178,6 +182,34 @@ export default function Camara() {
   function nextSign() {
     setResult('none'); setChecked(false); setStatus(''); setDetected(null);
     changeSign((current + 1) % SIGNS.length);
+  }
+
+  async function finalizarPractica() {
+    const token = localStorage.getItem('token');
+    const usuarioGuardado = localStorage.getItem('usuario');
+    if (!token || !usuarioGuardado) {
+      setStatus('⚠️ Inicia sesión para guardar tu progreso.');
+      return;
+    }
+    const usuario = JSON.parse(usuarioGuardado);
+    setSaving(true);
+    try {
+      await fetch(`${API_AUTH}/api/practices`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ usuario_id: usuario.id, success: score, fail: fails }),
+      });
+      setStatus('✅ ¡Progreso guardado!');
+      setScore(0);
+      setFails(0);
+    } catch {
+      setStatus('⚠️ No se pudo guardar el progreso.');
+    } finally {
+      setSaving(false);
+    }
   }
 
   function retrySign() {
@@ -266,7 +298,27 @@ export default function Camara() {
               <button style={s.clearBtn} onClick={clearSamples}>🗑️ Borrar todo</button>
             </>}
             {mode === 'practice' && (
-              <span style={s.pill}>⭐ {score} correctas en esta sesión</span>
+              <div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                width: '100%', flexWrap: 'wrap', gap: 16,
+              }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <span style={{ fontSize: 15, color: '#86efac', fontWeight: 600 }}>Aciertos: {score}</span>
+                  <span style={{ fontSize: 15, color: '#fca5a5', fontWeight: 600 }}>Fallos: {fails}</span>
+                </div>
+                <button
+                  style={{
+                    background: '#86efac', color: '#14532d', border: 'none',
+                    borderRadius: 10, padding: '10px 22px', fontWeight: 700,
+                    fontSize: 14, cursor: saving ? 'not-allowed' : 'pointer',
+                    boxShadow: '0 4px 0 #16a34a', opacity: saving ? 0.6 : 1,
+                  }}
+                  disabled={saving}
+                  onClick={finalizarPractica}
+                >
+                  {saving ? 'Guardando...' : 'Finalizar'}
+                </button>
+              </div>
             )}
           </div>
 
