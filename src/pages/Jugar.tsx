@@ -1,6 +1,35 @@
 import { useState, useEffect, useMemo } from 'react';
 
+const API_AUTH = 'https://lsplay-backend-production.up.railway.app';
 const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+
+function getUsuario(): { id: number } | null {
+  const raw = localStorage.getItem('usuario');
+  return raw ? JSON.parse(raw) : null;
+}
+
+async function guardarProgresoJuego(
+  game: 'memoria' | 'quiz',
+  perfect: boolean,
+  bestScore: string,
+  extra?: { seconds?: number; maxStreak?: number }
+) {
+  const token = localStorage.getItem('token');
+  const usuario = getUsuario();
+  if (!token || !usuario) return;
+  try {
+    await fetch(`${API_AUTH}/api/game-progress`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        usuario_id: usuario.id, game, perfect, best_score: bestScore,
+        seconds: extra?.seconds, max_streak: extra?.maxStreak,
+      }),
+    });
+  } catch {
+    // si falla el guardado no bloqueamos el juego, solo no se registra el logro
+  }
+}
 
 function SignImg({ letter, size = 60 }: { letter: string; size?: number }) {
   return (
@@ -30,6 +59,29 @@ function buildCards(): Card[] {
 
 export default function Jugar() {
   const [mode, setMode] = useState<'menu' | 'memory' | 'quiz'>('menu');
+  const [quizUnlocked, setQuizUnlocked] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function cargarProgreso() {
+      const token = localStorage.getItem('token');
+      const usuario = getUsuario();
+      if (!token || !usuario) { setLoading(false); return; }
+      try {
+        const res = await fetch(`${API_AUTH}/api/game-progress/${usuario.id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        const memoria = (data.progreso || []).find((p: any) => p.game === 'memoria');
+        setQuizUnlocked(!!memoria?.perfect);
+      } catch {
+        // si falla la consulta, dejamos el quiz bloqueado por defecto
+      } finally {
+        setLoading(false);
+      }
+    }
+    cargarProgreso();
+  }, [mode]); // re-consulta al volver al menú, por si se acaba de desbloquear
 
   return (
     <div style={{ minHeight: '100vh', background: '#faf7ff', padding: '40px 32px' }}>
@@ -44,7 +96,19 @@ export default function Jugar() {
             <p style={s.gameDesc}>Empareja la imagen de la seña con su letra. ¡Encuentra todos los pares!</p>
             <span style={{ ...s.gameTag, background: '#ede9fb', color: '#5b21b6' }}>6 pares</span>
           </div>
-          <div style={s.gameCard} onClick={() => setMode('quiz')}>
+
+          <div
+            style={{ ...s.gameCard, ...(quizUnlocked ? {} : s.gameCardLocked) }}
+            onClick={() => quizUnlocked && setMode('quiz')}
+          >
+            {!quizUnlocked && !loading && (
+              <div style={s.lockOverlay}>
+                <span style={{ fontSize: 30 }}>🔒</span>
+                <p style={{ fontSize: 12, fontWeight: 700, color: '#6b5a9e', textAlign: 'center', margin: '6px 12px 0' }}>
+                  Gana el Juego de Memoria sin ningún error para desbloquear
+                </p>
+              </div>
+            )}
             <span style={s.gameEmoji}>❓</span>
             <h3 style={s.gameTitle}>¿Cuál seña es?</h3>
             <p style={s.gameDesc}>Ve la seña y elige la letra correcta entre 4 opciones.</p>
@@ -74,7 +138,11 @@ function MemoryGame({ onBack }: { onBack: () => void }) {
   }, [won]);
 
   useEffect(() => {
-    if (cards.every(c => c.matched)) setWon(true);
+    if (cards.every(c => c.matched) && !won) {
+      setWon(true);
+      const perfect = moves === cards.length / 2; // 6 pares = 6 movimientos si no falló ninguno
+      guardarProgresoJuego('memoria', perfect, `${moves} movimientos`);
+    }
   }, [cards]);
 
   function flip(id: number) {
@@ -117,6 +185,11 @@ function MemoryGame({ onBack }: { onBack: () => void }) {
           <div style={{ fontSize: 64 }}>🏆</div>
           <h2 style={{ fontFamily: "'Fredoka One',cursive", fontSize: 32, color: '#3d2c6e', margin: '12px 0 8px' }}>¡Ganaste!</h2>
           <p style={{ fontSize: 16, color: '#6b5a9e', fontWeight: 600 }}>{fmt(seconds)} · {moves} movimientos</p>
+          {moves === cards.length / 2 ? (
+            <p style={{ fontSize: 14, color: '#15803d', fontWeight: 700, marginTop: 6 }}>🔓 ¡Sin errores! Desbloqueaste el Quiz</p>
+          ) : (
+            <p style={{ fontSize: 14, color: '#9e8ec0', fontWeight: 600, marginTop: 6 }}>Gánalo sin fallar ningún par para desbloquear el Quiz</p>
+          )}
           <div style={{ display: 'flex', gap: 12, marginTop: 20, justifyContent: 'center' }}>
             <button style={s.btnPlay} onClick={() => { setCards(buildCards()); setFlipped([]); setMoves(0); setSeconds(0); setWon(false); }}>🔄 Jugar de nuevo</button>
             <button style={{ ...s.btnPlay, background: '#ede9fb', color: '#5b21b6', boxShadow: '0 4px 0 #7c3aed' }} onClick={onBack}>← Menú</button>
@@ -166,6 +239,8 @@ function QuizGame({ onBack }: { onBack: () => void }) {
   const [selected, setSelected] = useState<string | null>(null);
   const [done, setDone]         = useState(false);
   const [seconds, setSeconds]   = useState(0);
+  const [streak, setStreak]     = useState(0);
+  const [maxStreak, setMaxStreak] = useState(0);
 
   useEffect(() => {
     if (done) return;
@@ -182,11 +257,24 @@ function QuizGame({ onBack }: { onBack: () => void }) {
   function answer(opt: string) {
     if (selected) return; // ya respondió, no hacer nada
     setSelected(opt);
-    if (opt === correct) setScore(sc => sc + 1);
+    let newStreak = streak;
+    if (opt === correct) {
+      setScore(sc => sc + 1);
+      newStreak = streak + 1;
+      setStreak(newStreak);
+      setMaxStreak(m => Math.max(m, newStreak));
+    } else {
+      newStreak = 0;
+      setStreak(0);
+    }
     // Esperar 1.2 segundos para que el niño vea si acertó o no
     setTimeout(() => {
       if (current + 1 >= questions.length) {
         setDone(true);
+        const finalScore = score + (opt === correct ? 1 : 0);
+        guardarProgresoJuego('quiz', finalScore === questions.length, `${finalScore}/${questions.length}`, {
+          seconds, maxStreak: Math.max(maxStreak, newStreak),
+        });
       } else {
         setCurrent(c => c + 1);
         setSelected(null);
@@ -200,6 +288,8 @@ function QuizGame({ onBack }: { onBack: () => void }) {
     setSelected(null);
     setDone(false);
     setSeconds(0);
+    setStreak(0);
+    setMaxStreak(0);
   }
 
   if (done) return (
@@ -270,7 +360,9 @@ const s: Record<string, React.CSSProperties> = {
   title:     { fontFamily: "'Fredoka One',cursive", fontSize: 'clamp(28px,4vw,42px)', color: '#3d2c6e', textAlign: 'center', marginBottom: 8 },
   sub:       { fontSize: 16, fontWeight: 600, color: '#9e8ec0', textAlign: 'center', marginBottom: 40 },
   menuGrid:  { display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 24, maxWidth: 680, margin: '0 auto' },
-  gameCard:  { background: '#fff', borderRadius: 20, padding: '32px 24px', textAlign: 'center', border: '2px solid #e8e0f5', boxShadow: '0 4px 0 rgba(139,92,246,0.1)', cursor: 'pointer', transition: 'all 0.2s' },
+  gameCard:  { background: '#fff', borderRadius: 20, padding: '32px 24px', textAlign: 'center', border: '2px solid #e8e0f5', boxShadow: '0 4px 0 rgba(139,92,246,0.1)', cursor: 'pointer', transition: 'all 0.2s', position: 'relative' as const },
+  gameCardLocked: { opacity: 0.55, cursor: 'not-allowed' as const, filter: 'grayscale(40%)' },
+  lockOverlay: { position: 'absolute' as const, inset: 0, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.75)', borderRadius: 20, zIndex: 2 },
   gameEmoji: { fontSize: 56, display: 'block', marginBottom: 14 },
   gameTitle: { fontFamily: "'Fredoka One',cursive", fontSize: 26, color: '#3d2c6e', marginBottom: 8 },
   gameDesc:  { fontSize: 14, fontWeight: 600, color: '#9e8ec0', lineHeight: 1.5, marginBottom: 12 },

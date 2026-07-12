@@ -1,4 +1,12 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+
+const API_AUTH = 'https://lsplay-backend-production.up.railway.app';
+
+function getAuth() {
+  const token = localStorage.getItem('token');
+  const raw = localStorage.getItem('usuario');
+  return { token, usuario: raw ? JSON.parse(raw) : null };
+}
 
 // Abecedario dactilológico completo de LSE: 30 elementos (26 letras + CH, LL, RR, Ñ)
 const ALPHABET: { id: string; label: string }[] = [
@@ -72,6 +80,23 @@ export default function Aprender() {
   const [learned, setLearned]   = useState<Set<string>>(new Set());
   const [filter, setFilter]     = useState('Todas');
 
+  useEffect(() => {
+    async function cargar() {
+      const { token, usuario } = getAuth();
+      if (!token || !usuario) return;
+      try {
+        const res = await fetch(`${API_AUTH}/api/letter-progress/${usuario.id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        setLearned(new Set(data.letras || []));
+      } catch {
+        // si falla, simplemente arranca sin nada marcado
+      }
+    }
+    cargar();
+  }, []);
+
   const groups: Record<string, typeof ALPHABET> = {
     'Todas':  ALPHABET,
     'A – E':  ALPHABET.slice(0, 6),
@@ -83,7 +108,28 @@ export default function Aprender() {
   const selectedItem = ALPHABET.find(l => l.id === selected);
 
   function markLearned(id: string) {
+    if (learned.has(id)) return; // ya estaba aprendida, no volver a sumar XP
     setLearned(prev => new Set([...prev, id]));
+
+    const { token, usuario } = getAuth();
+    if (!token || !usuario) return;
+
+    fetch(`${API_AUTH}/api/letter-progress`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ usuario_id: usuario.id, letter_id: id }),
+    }).catch(() => {});
+
+    fetch(`${API_AUTH}/api/usuarios/${usuario.id}/sumar-xp`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ xp: 30 }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.usuario) localStorage.setItem('usuario', JSON.stringify(data.usuario));
+      })
+      .catch(() => {});
   }
 
   return (

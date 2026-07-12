@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Icon } from '@iconify/react';
 
+const API_AUTH = 'https://lsplay-backend-production.up.railway.app';
+
 type Usuario = {
   id: number;
   nombre: string;
@@ -11,28 +13,16 @@ type Usuario = {
   nivel: number;
 };
 
-const badges = [
-  { emoji: 'fluent-emoji-flat:glowing-star',    title: 'Primera seña',  desc: 'Aprendiste tu primera seña',     earned: true  },
-  { emoji: 'fluent-emoji-flat:open-book',       title: 'Estudiante',    desc: 'Completaste una lección',         earned: true  },
-  { emoji: 'fluent-emoji-flat:joker',           title: 'Jugador',       desc: 'Ganaste el juego de memoria',     earned: true  },
-  { emoji: 'fluent-emoji-flat:high-voltage',    title: 'Veloz',         desc: 'Terminaste un quiz en menos de 1 min', earned: false },
-  { emoji: 'fluent-emoji-flat:fire',            title: 'En racha',      desc: '5 respuestas correctas seguidas', earned: false },
-  { emoji: 'fluent-emoji-flat:camera',          title: 'Cámara activa', desc: 'Practicaste 5 veces con cámara',  earned: false },
-  { emoji: 'fluent-emoji-flat:sports-medal',    title: 'Experto A–F',   desc: 'Aprendiste las primeras 6 señas', earned: false },
-  { emoji: 'fluent-emoji-flat:trophy',          title: 'Campeón',       desc: 'Completaste todos los niveles',   earned: false },
-];
-
-const history = [
-  { icon: 'fluent-emoji-flat:check-mark-button', text: 'Lección A–F completada',   xp: 30, color: '#86efac', textColor: '#14532d' },
-  { icon: 'fluent-emoji-flat:joker',             text: 'Juego de memoria ganado',  xp: 20, color: '#fcd34d', textColor: '#78350f' },
-  { icon: 'fluent-emoji-flat:camera',            text: 'Práctica con cámara',      xp: 15, color: '#c4b5fd', textColor: '#4c1d95' },
-  { icon: 'fluent-emoji-flat:red-question-mark', text: 'Quiz completado (7/10)',    xp: 35, color: '#a5f3fc', textColor: '#164e63' },
-];
+type Logro = { key: string; emoji: string; title: string; desc: string; earned: boolean };
+type Actividad = { text: string; xp: number; fecha: string; icon: string; color: string; textColor: string };
 
 export default function Perfil() {
   const navigate = useNavigate();
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [checking, setChecking] = useState(true);
+  const [badges, setBadges] = useState<Logro[]>([]);
+  const [history, setHistory] = useState<Actividad[]>([]);
+  const [statTotals, setStatTotals] = useState({ letras: 0, practicas: 0, juegos: 0 });
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -51,6 +41,31 @@ export default function Perfil() {
     }
     setChecking(false);
   }, [navigate]);
+
+  useEffect(() => {
+    async function cargarProgreso() {
+      const token = localStorage.getItem('token');
+      const usuarioGuardado = localStorage.getItem('usuario');
+      if (!token || !usuarioGuardado) return;
+      const u = JSON.parse(usuarioGuardado);
+      try {
+        const res = await fetch(`${API_AUTH}/api/progreso/${u.id}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const data = await res.json();
+        setBadges(data.logros || []);
+        setHistory(data.actividad || []);
+        setStatTotals({
+          letras: data.totalLetras ?? 0,
+          practicas: data.totalPracticas ?? 0,
+          juegos: data.totalJuegos ?? 0,
+        });
+      } catch {
+        // si falla, se queda vacío en vez de mostrar datos falsos
+      }
+    }
+    cargarProgreso();
+  }, []);
 
   function handleLogout() {
     localStorage.removeItem('token');
@@ -100,9 +115,9 @@ export default function Perfil() {
             </div>
           </div>
           <div style={s.statBox}>
-            <div style={s.statItem}><span style={s.statN}>3</span><span style={s.statL}>Logros</span></div>
-            <div style={s.statItem}><span style={s.statN}>4</span><span style={s.statL}>Lecciones</span></div>
-            <div style={s.statItem}><span style={s.statN}>2</span><span style={s.statL}>Juegos</span></div>
+            <div style={s.statItem}><span style={s.statN}>{earnedCount}</span><span style={s.statL}>Logros</span></div>
+            <div style={s.statItem}><span style={s.statN}>{statTotals.letras}</span><span style={s.statL}>Señas</span></div>
+            <div style={s.statItem}><span style={s.statN}>{statTotals.juegos}</span><span style={s.statL}>Juegos</span></div>
           </div>
         </div>
 
@@ -111,7 +126,7 @@ export default function Perfil() {
           <h2 style={s.sectionTitle}><><Icon icon="fluent-emoji-flat:sports-medal" width={24} style={{verticalAlign:'middle',marginRight:6}} />Mis Logros</> <span style={s.countBadge}>{earnedCount} / {badges.length}</span></h2>
           <div style={s.badgesGrid}>
             {badges.map(b => (
-              <div key={b.title} style={{ ...s.badge, ...(b.earned ? s.badgeEarned : s.badgeLocked) }}>
+              <div key={b.key} style={{ ...s.badge, ...(b.earned ? s.badgeEarned : s.badgeLocked) }}>
                 <Icon icon={b.earned ? b.emoji : 'fluent-emoji-flat:locked'} width={38} style={{ display: 'block', margin: '0 auto 8px' }} />
                 <h4 style={{ fontFamily: "'Fredoka One',cursive", fontSize: 15, color: b.earned ? '#3d2c6e' : '#9e8ec0', marginBottom: 4 }}>{b.title}</h4>
                 <p style={{ fontSize: 11, fontWeight: 700, color: '#9e8ec0', lineHeight: 1.4 }}>{b.desc}</p>
