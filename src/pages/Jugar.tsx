@@ -105,7 +105,7 @@ export default function Jugar() {
               <div style={s.lockOverlay}>
                 <span style={{ fontSize: 30 }}>🔒</span>
                 <p style={{ fontSize: 12, fontWeight: 700, color: '#6b5a9e', textAlign: 'center', margin: '6px 12px 0' }}>
-                  Gana el Juego de Memoria sin ningún error para desbloquear
+                  Gana el Juego de Memoria con 3 errores o menos para desbloquear
                 </p>
               </div>
             )}
@@ -129,8 +129,10 @@ function MemoryGame({ onBack }: { onBack: () => void }) {
   const [flipped, setFlipped] = useState<number[]>([]);
   const [busy, setBusy]       = useState(false); // true mientras se verifica un par, bloquea nuevos clics
   const [moves, setMoves]     = useState(0);
+  const [errors, setErrors]   = useState(0); // pares fallados en la partida
   const [seconds, setSeconds] = useState(0);
   const [won, setWon]         = useState(false);
+  const MAX_ERRORS_PARA_DESBLOQUEAR = 3;
 
   useEffect(() => {
     if (won) return;
@@ -141,8 +143,8 @@ function MemoryGame({ onBack }: { onBack: () => void }) {
   useEffect(() => {
     if (cards.every(c => c.matched) && !won) {
       setWon(true);
-      const perfect = moves === cards.length / 2; // 6 pares = 6 movimientos si no falló ninguno
-      guardarProgresoJuego('memoria', perfect, `${moves} movimientos`);
+      const perfect = errors <= MAX_ERRORS_PARA_DESBLOQUEAR;
+      guardarProgresoJuego('memoria', perfect, `${moves} movimientos, ${errors} errores`);
     }
   }, [cards]);
 
@@ -171,6 +173,7 @@ function MemoryGame({ onBack }: { onBack: () => void }) {
       setFlipped([]);
       setBusy(false);
     } else {
+      setErrors(e => e + 1);
       setTimeout(() => {
         setCards(prev => prev.map(c => newFlipped.includes(c.id) ? { ...c, flipped: false } : c));
         setFlipped([]);
@@ -189,21 +192,33 @@ function MemoryGame({ onBack }: { onBack: () => void }) {
         <div style={{ display: 'flex', gap: 10 }}>
           <span style={s.statPill}>⏱ {fmt(seconds)}</span>
           <span style={s.statPill}>🔄 {moves}</span>
+          <span style={{
+            ...s.statPill,
+            background: errors > MAX_ERRORS_PARA_DESBLOQUEAR ? '#fee2e2' : '#fef3c7',
+            color: errors > MAX_ERRORS_PARA_DESBLOQUEAR ? '#991b1b' : '#78350f',
+          }}>
+            ❌ {errors}/{MAX_ERRORS_PARA_DESBLOQUEAR}
+          </span>
         </div>
       </div>
+      {!won && (
+        <p style={{ textAlign: 'center', fontSize: 13, color: '#9e8ec0', fontWeight: 600, margin: '4px 0 16px' }}>
+          🔓 Gánalo con {MAX_ERRORS_PARA_DESBLOQUEAR} errores o menos para desbloquear el Quiz
+        </p>
+      )}
 
       {won ? (
         <div style={s.winBox}>
           <div style={{ fontSize: 64 }}>🏆</div>
           <h2 style={{ fontFamily: "'Fredoka One',cursive", fontSize: 32, color: '#3d2c6e', margin: '12px 0 8px' }}>¡Ganaste!</h2>
-          <p style={{ fontSize: 16, color: '#6b5a9e', fontWeight: 600 }}>{fmt(seconds)} · {moves} movimientos</p>
-          {moves === cards.length / 2 ? (
-            <p style={{ fontSize: 14, color: '#15803d', fontWeight: 700, marginTop: 6 }}>🔓 ¡Sin errores! Desbloqueaste el Quiz</p>
+          <p style={{ fontSize: 16, color: '#6b5a9e', fontWeight: 600 }}>{fmt(seconds)} · {moves} movimientos · {errors} errores</p>
+          {errors <= MAX_ERRORS_PARA_DESBLOQUEAR ? (
+            <p style={{ fontSize: 14, color: '#15803d', fontWeight: 700, marginTop: 6 }}>🔓 ¡Lo lograste! Desbloqueaste el Quiz</p>
           ) : (
-            <p style={{ fontSize: 14, color: '#9e8ec0', fontWeight: 600, marginTop: 6 }}>Gánalo sin fallar ningún par para desbloquear el Quiz</p>
+            <p style={{ fontSize: 14, color: '#9e8ec0', fontWeight: 600, marginTop: 6 }}>Gánalo con {MAX_ERRORS_PARA_DESBLOQUEAR} errores o menos para desbloquear el Quiz</p>
           )}
           <div style={{ display: 'flex', gap: 12, marginTop: 20, justifyContent: 'center' }}>
-            <button style={s.btnPlay} onClick={() => { setCards(buildCards()); setFlipped([]); setBusy(false); setMoves(0); setSeconds(0); setWon(false); }}>🔄 Jugar de nuevo</button>
+            <button style={s.btnPlay} onClick={() => { setCards(buildCards()); setFlipped([]); setBusy(false); setMoves(0); setErrors(0); setSeconds(0); setWon(false); }}>🔄 Jugar de nuevo</button>
             <button style={{ ...s.btnPlay, background: '#ede9fb', color: '#5b21b6', boxShadow: '0 4px 0 #7c3aed' }} onClick={onBack}>← Menú</button>
           </div>
         </div>
