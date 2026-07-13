@@ -127,6 +127,7 @@ export default function Jugar() {
 function MemoryGame({ onBack }: { onBack: () => void }) {
   const [cards, setCards]     = useState<Card[]>(buildCards);
   const [flipped, setFlipped] = useState<number[]>([]);
+  const [busy, setBusy]       = useState(false); // true mientras se verifica un par, bloquea nuevos clics
   const [moves, setMoves]     = useState(0);
   const [seconds, setSeconds] = useState(0);
   const [won, setWon]         = useState(false);
@@ -146,24 +147,35 @@ function MemoryGame({ onBack }: { onBack: () => void }) {
   }, [cards]);
 
   function flip(id: number) {
+    if (busy) return; // ya hay un par siendo verificado, no dejamos voltear más cartas
     const card = cards.find(c => c.id === id);
-    if (!card || card.flipped || card.matched || flipped.length === 2) return;
+    if (!card || card.flipped || card.matched) return;
+
     const newFlipped = [...flipped, id];
     setCards(prev => prev.map(c => c.id === id ? { ...c, flipped: true } : c));
-    if (newFlipped.length === 2) {
-      setMoves(m => m + 1);
-      const [a, b] = newFlipped.map(fid => cards.find(c => c.id === fid)!);
-      if (a.value === b.value) {
-        setCards(prev => prev.map(c => c.value === a.value ? { ...c, matched: true } : c));
-        setFlipped([]);
-      } else {
-        setTimeout(() => {
-          setCards(prev => prev.map(c => newFlipped.includes(c.id) ? { ...c, flipped: false } : c));
-          setFlipped([]);
-        }, 900);
-      }
-    } else {
+
+    if (newFlipped.length < 2) {
       setFlipped(newFlipped);
+      return;
+    }
+
+    // Segunda carta del par: bloqueamos nuevos clics hasta resolver
+    setBusy(true);
+    setMoves(m => m + 1);
+
+    const firstCard = cards.find(c => c.id === newFlipped[0])!;
+    const isMatch = firstCard.value === card.value;
+
+    if (isMatch) {
+      setCards(prev => prev.map(c => c.value === card.value ? { ...c, matched: true } : c));
+      setFlipped([]);
+      setBusy(false);
+    } else {
+      setTimeout(() => {
+        setCards(prev => prev.map(c => newFlipped.includes(c.id) ? { ...c, flipped: false } : c));
+        setFlipped([]);
+        setBusy(false);
+      }, 900);
     }
   }
 
@@ -191,7 +203,7 @@ function MemoryGame({ onBack }: { onBack: () => void }) {
             <p style={{ fontSize: 14, color: '#9e8ec0', fontWeight: 600, marginTop: 6 }}>Gánalo sin fallar ningún par para desbloquear el Quiz</p>
           )}
           <div style={{ display: 'flex', gap: 12, marginTop: 20, justifyContent: 'center' }}>
-            <button style={s.btnPlay} onClick={() => { setCards(buildCards()); setFlipped([]); setMoves(0); setSeconds(0); setWon(false); }}>🔄 Jugar de nuevo</button>
+            <button style={s.btnPlay} onClick={() => { setCards(buildCards()); setFlipped([]); setBusy(false); setMoves(0); setSeconds(0); setWon(false); }}>🔄 Jugar de nuevo</button>
             <button style={{ ...s.btnPlay, background: '#ede9fb', color: '#5b21b6', boxShadow: '0 4px 0 #7c3aed' }} onClick={onBack}>← Menú</button>
           </div>
         </div>
