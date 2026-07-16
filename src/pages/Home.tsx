@@ -18,7 +18,7 @@ const steps = [
 
 // Datos reales del proyecto (nada de cifras de uso inventadas)
 const highlights = [
-  { icon: 'fluent-emoji-flat:abc',                 label: '26 Letras del abecedario' },
+  { icon: 'fluent-emoji-flat:abc',                 label: '30 Letras del abecedario' },
   { icon: 'fluent-emoji-flat:robot',                label: 'Detección con IA en tiempo real' },
   { icon: 'fluent-emoji-flat:camera-with-flash',    label: 'Funciona con tu cámara' },
   { icon: 'fluent-emoji-flat:money-bag',            label: '100% gratuito' },
