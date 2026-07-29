@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import LOGO from '../assets/logo.png';
 import { Icon } from '@iconify/react';
 
@@ -16,7 +16,7 @@ const steps = [
   { num: '3', title: '¡Gana estrellas!',    desc: 'Completa niveles y desbloquea logros especiales.',                       bg: '#fcd34d', color: '#78350f', shadow: '#d97706' },
 ];
 
-// Datos reales del proyecto (nada de cifras de uso inventadas)
+// Datos reales del proyecto 
 const highlights = [
   { icon: 'fluent-emoji-flat:abc',                 label: '30 Letras del abecedario' },
   { icon: 'fluent-emoji-flat:robot',                label: 'Detección con IA en tiempo real' },
@@ -24,8 +24,14 @@ const highlights = [
   { icon: 'fluent-emoji-flat:money-bag',            label: '100% gratuito' },
 ];
 
+// Regla de nivel: debe coincidir siempre con el backend (nivel = FLOOR(xp/100) + 1)
+const XP_POR_NIVEL = 100;
+
+type UsuarioLite = { nombre?: string; xp?: number; nivel?: number };
+
 export default function Home() {
   const counterRef = useRef<HTMLSpanElement>(null);
+  const [usuario, setUsuario] = useState<UsuarioLite | null>(null);
 
   useEffect(() => {
     const target = 26;
@@ -40,6 +46,23 @@ export default function Home() {
     }, 18);
     return () => clearInterval(t);
   }, []);
+
+  // Cargar el usuario real (si hay sesión activa) para mostrar SU progreso,
+  // en vez del texto fijo "60 / 500 XP — Nivel 1" que había antes.
+  useEffect(() => {
+    const usuarioGuardado = localStorage.getItem('usuario');
+    if (!usuarioGuardado) return; // visitante sin sesión: no mostramos progreso inventado
+    try {
+      setUsuario(JSON.parse(usuarioGuardado));
+    } catch {
+      setUsuario(null);
+    }
+  }, []);
+
+  const totalXP     = usuario?.xp ?? 0;
+  const nivelActual = usuario?.nivel ?? (Math.floor(totalXP / XP_POR_NIVEL) + 1);
+  const xpEnNivel    = totalXP % XP_POR_NIVEL;
+  const pct          = Math.round((xpEnNivel / XP_POR_NIVEL) * 100);
 
   return (
     <div>
@@ -79,15 +102,23 @@ export default function Home() {
       </div>
 
       {/* PROGRESO */}
-      <div style={s.progSection}>
-        <span style={{ fontFamily: "'Fredoka One',cursive", fontSize: 18, color: '#5b21b6' }}>Tu progreso </span>
-        <div style={{ flex: 1, minWidth: 200, maxWidth: 400 }}>
-          <div className="prog-bar-outer">
-            <div className="prog-bar-inner" style={{ width: '12%' }} />
+      {usuario ? (
+        <div style={s.progSection}>
+          <span style={{ fontFamily: "'Fredoka One',cursive", fontSize: 18, color: '#5b21b6' }}>Tu progreso </span>
+          <div style={{ flex: 1, minWidth: 200, maxWidth: 400 }}>
+            <div className="prog-bar-outer">
+              <div className="prog-bar-inner" style={{ width: `${pct}%` }} />
+            </div>
+            <p style={{ fontSize: 13, fontWeight: 700, color: '#9e8ec0', marginTop: 5 }}>{xpEnNivel} / {XP_POR_NIVEL} XP — Nivel {nivelActual} · ¡Sigue así! </p>
           </div>
-          <p style={{ fontSize: 13, fontWeight: 700, color: '#9e8ec0', marginTop: 5 }}>60 / 500 XP — Nivel 1 · ¡Sigue así! </p>
         </div>
-      </div>
+      ) : (
+        <div style={s.progSection}>
+          <span style={{ fontSize: 14, fontWeight: 700, color: '#9e8ec0' }}>
+            <Link to="/login" style={{ color: '#7c3aed', fontWeight: 800 }}>Inicia sesión</Link> para guardar tu progreso y ganar XP
+          </span>
+        </div>
+      )}
 
       {/* ACTIVIDADES */}
       <section style={{ padding: '56px 32px', background: '#faf7ff' }} id="actividades">

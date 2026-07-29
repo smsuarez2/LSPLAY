@@ -82,11 +82,18 @@ export default function Perfil() {
     );
   }
 
-  const totalXP     = usuario.xp ?? 0;
-  const nextXP       = 500;
-  const pct          = Math.round((totalXP / nextXP) * 100);
-  const earnedCount  = badges.filter(b => b.earned).length;
-  const inicial      = usuario.nombre?.charAt(0).toUpperCase() || '?';
+  // --- FIX progreso de nivel ---
+  // Antes: nextXP estaba fijo en 500 y la barra usaba el XP TOTAL acumulado (960),
+  // por eso se veía llena/desbordada y no coincidía con el nivel real.
+  // Regla real del backend: nivel = FLOOR(xp / 100) + 1  →  cada nivel cuesta 100 XP.
+  const XP_POR_NIVEL = 100; // debe coincidir siempre con la regla del backend
+  const totalXP      = usuario.xp ?? 0;
+  const nivelActual  = usuario.nivel ?? (Math.floor(totalXP / XP_POR_NIVEL) + 1);
+  const xpEnNivel     = totalXP % XP_POR_NIVEL; // XP ganado dentro del nivel actual (ej: 960 % 100 = 60)
+  const nextXP        = XP_POR_NIVEL;            // XP necesario para subir de nivel (100, no 500)
+  const pct           = Math.round((xpEnNivel / nextXP) * 100);
+  const earnedCount   = badges.filter(b => b.earned).length;
+  const inicial       = usuario.nombre?.charAt(0).toUpperCase() || '?';
 
   return (
     <div style={{ minHeight: '100vh', background: '#faf7ff', padding: '40px 32px' }}>
@@ -106,12 +113,12 @@ export default function Perfil() {
           <div style={{ flex: 1 }}>
             <div style={{ fontFamily: "'Fredoka One',cursive", fontSize: 26, color: '#3d2c6e' }}>¡Hola, {usuario.nombre}!</div>
             <div style={{ fontSize: 13, fontWeight: 700, color: '#c4b5fd', marginTop: 2 }}>{usuario.correo}</div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: '#9e8ec0', marginTop: 4 }}>Nivel {usuario.nivel ?? 1} · {totalXP} XP · ¡Sigue jugando para subir de nivel!</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: '#9e8ec0', marginTop: 4 }}>Nivel {nivelActual} · {totalXP} XP · ¡Sigue jugando para subir de nivel!</div>
             <div style={{ marginTop: 10, maxWidth: 280 }}>
               <div className="prog-bar-outer">
                 <div className="prog-bar-inner" style={{ width: `${pct}%` }} />
               </div>
-              <p style={{ fontSize: 12, color: '#9e8ec0', fontWeight: 700, marginTop: 4 }}>{totalXP} / {nextXP} XP para el siguiente nivel</p>
+              <p style={{ fontSize: 12, color: '#9e8ec0', fontWeight: 700, marginTop: 4 }}>{xpEnNivel} / {nextXP} XP para el siguiente nivel</p>
             </div>
           </div>
           <div style={s.statBox}>
